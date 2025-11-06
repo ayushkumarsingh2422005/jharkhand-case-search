@@ -12,6 +12,39 @@ type Accused = {
   arrestedDate?: string;
 };
 
+type WarrantInfo = {
+  prayed: boolean;
+  prayerDate?: string;
+  receiptDate?: string;
+  executionDate?: string;
+  returnDate?: string;
+};
+
+type ProclamationInfo = {
+  prayed: boolean;
+  prayerDate?: string;
+  receiptDate?: string;
+  executionDate?: string;
+  returnDate?: string;
+};
+
+type AttachmentInfo = {
+  prayed: boolean;
+  prayerDate?: string;
+  receiptDate?: string;
+  executionDate?: string;
+  returnDate?: string;
+};
+
+type ReportInfo = {
+  r1?: string;
+  supervision?: string;
+  r2?: string;
+  r3?: string;
+  fpr?: string;
+  finalChargesheet?: string;
+};
+
 type CaseRow = {
   caseNo: string;
   year: number;
@@ -20,6 +53,10 @@ type CaseRow = {
   punishmentCategory: "\u22647 yrs" | ">7 yrs";
   accused: Accused[];
   caseStatus: CaseStatus;
+  warrant?: WarrantInfo;
+  proclamation?: ProclamationInfo;
+  attachment?: AttachmentInfo;
+  reports?: ReportInfo;
 };
 
 const POLICE_STATIONS = [
@@ -73,6 +110,41 @@ export default function Home() {
     caseDateTo: "",
     arrestDateFrom: "",
     arrestDateTo: "",
+    // Warrant filters
+    warrantPrayed: "" as "" | "Yes" | "No",
+    warrantPrayerDateFrom: "",
+    warrantPrayerDateTo: "",
+    warrantExecutionDateFrom: "",
+    warrantExecutionDateTo: "",
+    // Proclamation filters
+    proclamationPrayed: "" as "" | "Yes" | "No",
+    proclamationPrayerDateFrom: "",
+    proclamationPrayerDateTo: "",
+    proclamationExecutionDateFrom: "",
+    proclamationExecutionDateTo: "",
+    // Attachment filters
+    attachmentPrayed: "" as "" | "Yes" | "No",
+    attachmentPrayerDateFrom: "",
+    attachmentPrayerDateTo: "",
+    // Report filters
+    reportR1: "" as "" | "Yes" | "No",
+    reportR1DateFrom: "",
+    reportR1DateTo: "",
+    reportSupervision: "" as "" | "Yes" | "No",
+    reportSupervisionDateFrom: "",
+    reportSupervisionDateTo: "",
+    reportR2: "" as "" | "Yes" | "No",
+    reportR2DateFrom: "",
+    reportR2DateTo: "",
+    reportR3: "" as "" | "Yes" | "No",
+    reportR3DateFrom: "",
+    reportR3DateTo: "",
+    reportFPR: "" as "" | "Yes" | "No",
+    reportFPRDateFrom: "",
+    reportFPRDateTo: "",
+    reportFinalChargesheet: "" as "" | "Yes" | "No",
+    reportFinalChargesheetDateFrom: "",
+    reportFinalChargesheetDateTo: "",
     pageSize: 10 as 10 | 25 | 50,
   });
 
@@ -88,6 +160,27 @@ export default function Home() {
         { name: "Rakesh Kumar", status: "Arrested", arrestedDate: "2023-01-15" },
         { name: "Suman Verma", status: "Arrested", arrestedDate: "2023-01-20" },
       ],
+      warrant: {
+        prayed: true,
+        prayerDate: "2023-01-25",
+        receiptDate: "2023-01-26",
+        executionDate: "2023-02-01",
+        returnDate: "2023-02-05",
+      },
+      proclamation: {
+        prayed: false,
+      },
+      attachment: {
+        prayed: false,
+      },
+      reports: {
+        r1: "2023-01-12",
+        supervision: "2023-02-01",
+        r2: "2023-02-15",
+        r3: "2023-03-01",
+        fpr: "2023-03-10",
+        finalChargesheet: "2023-03-20",
+      },
     },
     {
       caseNo: "77/2024",
@@ -102,6 +195,31 @@ export default function Home() {
         { name: "Rajesh Patel", status: "Not arrested" },
         { name: "Deepak Yadav", status: "Decision pending" },
       ],
+      warrant: {
+        prayed: true,
+        prayerDate: "2024-03-05",
+        receiptDate: "2024-03-06",
+        executionDate: undefined,
+        returnDate: undefined,
+      },
+      proclamation: {
+        prayed: true,
+        prayerDate: "2024-03-10",
+        receiptDate: "2024-03-12",
+        executionDate: undefined,
+        returnDate: undefined,
+      },
+      attachment: {
+        prayed: false,
+      },
+      reports: {
+        r1: "2024-02-12",
+        supervision: "2024-03-01",
+        r2: undefined,
+        r3: undefined,
+        fpr: undefined,
+        finalChargesheet: undefined,
+      },
     },
     {
       caseNo: "05/2025",
@@ -113,6 +231,23 @@ export default function Home() {
       accused: [
         { name: "Vikram Singh", status: "Decision pending" },
       ],
+      warrant: {
+        prayed: false,
+      },
+      proclamation: {
+        prayed: false,
+      },
+      attachment: {
+        prayed: false,
+      },
+      reports: {
+        r1: undefined,
+        supervision: undefined,
+        r2: undefined,
+        r3: undefined,
+        fpr: undefined,
+        finalChargesheet: undefined,
+      },
     },
   ]);
 
@@ -185,6 +320,77 @@ export default function Home() {
           if (!hasArrestedWithDate) return null;
         }
 
+        // Warrant filters
+        if (filters.warrantPrayed) {
+          const warrantPrayed = filters.warrantPrayed === "Yes";
+          if (!row.warrant || row.warrant.prayed !== warrantPrayed) return null;
+        }
+        if (filters.warrantPrayerDateFrom && (!row.warrant?.prayerDate || new Date(row.warrant.prayerDate) < new Date(filters.warrantPrayerDateFrom))) return null;
+        if (filters.warrantPrayerDateTo && (!row.warrant?.prayerDate || new Date(row.warrant.prayerDate) > new Date(filters.warrantPrayerDateTo))) return null;
+        if (filters.warrantExecutionDateFrom && (!row.warrant?.executionDate || new Date(row.warrant.executionDate) < new Date(filters.warrantExecutionDateFrom))) return null;
+        if (filters.warrantExecutionDateTo && (!row.warrant?.executionDate || new Date(row.warrant.executionDate) > new Date(filters.warrantExecutionDateTo))) return null;
+
+        // Proclamation filters
+        if (filters.proclamationPrayed) {
+          const proclamationPrayed = filters.proclamationPrayed === "Yes";
+          if (!row.proclamation || row.proclamation.prayed !== proclamationPrayed) return null;
+        }
+        if (filters.proclamationPrayerDateFrom && (!row.proclamation?.prayerDate || new Date(row.proclamation.prayerDate) < new Date(filters.proclamationPrayerDateFrom))) return null;
+        if (filters.proclamationPrayerDateTo && (!row.proclamation?.prayerDate || new Date(row.proclamation.prayerDate) > new Date(filters.proclamationPrayerDateTo))) return null;
+        if (filters.proclamationExecutionDateFrom && (!row.proclamation?.executionDate || new Date(row.proclamation.executionDate) < new Date(filters.proclamationExecutionDateFrom))) return null;
+        if (filters.proclamationExecutionDateTo && (!row.proclamation?.executionDate || new Date(row.proclamation.executionDate) > new Date(filters.proclamationExecutionDateTo))) return null;
+
+        // Attachment filters
+        if (filters.attachmentPrayed) {
+          const attachmentPrayed = filters.attachmentPrayed === "Yes";
+          if (!row.attachment || row.attachment.prayed !== attachmentPrayed) return null;
+        }
+        if (filters.attachmentPrayerDateFrom && (!row.attachment?.prayerDate || new Date(row.attachment.prayerDate) < new Date(filters.attachmentPrayerDateFrom))) return null;
+        if (filters.attachmentPrayerDateTo && (!row.attachment?.prayerDate || new Date(row.attachment.prayerDate) > new Date(filters.attachmentPrayerDateTo))) return null;
+
+        // Report filters
+        if (filters.reportR1) {
+          const hasR1 = filters.reportR1 === "Yes" ? !!row.reports?.r1 : !row.reports?.r1;
+          if (!hasR1) return null;
+        }
+        if (filters.reportR1DateFrom && (!row.reports?.r1 || new Date(row.reports.r1) < new Date(filters.reportR1DateFrom))) return null;
+        if (filters.reportR1DateTo && (!row.reports?.r1 || new Date(row.reports.r1) > new Date(filters.reportR1DateTo))) return null;
+
+        if (filters.reportSupervision) {
+          const hasSupervision = filters.reportSupervision === "Yes" ? !!row.reports?.supervision : !row.reports?.supervision;
+          if (!hasSupervision) return null;
+        }
+        if (filters.reportSupervisionDateFrom && (!row.reports?.supervision || new Date(row.reports.supervision) < new Date(filters.reportSupervisionDateFrom))) return null;
+        if (filters.reportSupervisionDateTo && (!row.reports?.supervision || new Date(row.reports.supervision) > new Date(filters.reportSupervisionDateTo))) return null;
+
+        if (filters.reportR2) {
+          const hasR2 = filters.reportR2 === "Yes" ? !!row.reports?.r2 : !row.reports?.r2;
+          if (!hasR2) return null;
+        }
+        if (filters.reportR2DateFrom && (!row.reports?.r2 || new Date(row.reports.r2) < new Date(filters.reportR2DateFrom))) return null;
+        if (filters.reportR2DateTo && (!row.reports?.r2 || new Date(row.reports.r2) > new Date(filters.reportR2DateTo))) return null;
+
+        if (filters.reportR3) {
+          const hasR3 = filters.reportR3 === "Yes" ? !!row.reports?.r3 : !row.reports?.r3;
+          if (!hasR3) return null;
+        }
+        if (filters.reportR3DateFrom && (!row.reports?.r3 || new Date(row.reports.r3) < new Date(filters.reportR3DateFrom))) return null;
+        if (filters.reportR3DateTo && (!row.reports?.r3 || new Date(row.reports.r3) > new Date(filters.reportR3DateTo))) return null;
+
+        if (filters.reportFPR) {
+          const hasFPR = filters.reportFPR === "Yes" ? !!row.reports?.fpr : !row.reports?.fpr;
+          if (!hasFPR) return null;
+        }
+        if (filters.reportFPRDateFrom && (!row.reports?.fpr || new Date(row.reports.fpr) < new Date(filters.reportFPRDateFrom))) return null;
+        if (filters.reportFPRDateTo && (!row.reports?.fpr || new Date(row.reports.fpr) > new Date(filters.reportFPRDateTo))) return null;
+
+        if (filters.reportFinalChargesheet) {
+          const hasFinal = filters.reportFinalChargesheet === "Yes" ? !!row.reports?.finalChargesheet : !row.reports?.finalChargesheet;
+          if (!hasFinal) return null;
+        }
+        if (filters.reportFinalChargesheetDateFrom && (!row.reports?.finalChargesheet || new Date(row.reports.finalChargesheet) < new Date(filters.reportFinalChargesheetDateFrom))) return null;
+        if (filters.reportFinalChargesheetDateTo && (!row.reports?.finalChargesheet || new Date(row.reports.finalChargesheet) > new Date(filters.reportFinalChargesheetDateTo))) return null;
+
         return { ...row, matchedAccused };
       })
       .filter((row): row is CaseRow & { matchedAccused: Accused[] } => row !== null);
@@ -215,6 +421,37 @@ export default function Home() {
       caseDateTo: "",
       arrestDateFrom: "",
       arrestDateTo: "",
+      warrantPrayed: "",
+      warrantPrayerDateFrom: "",
+      warrantPrayerDateTo: "",
+      warrantExecutionDateFrom: "",
+      warrantExecutionDateTo: "",
+      proclamationPrayed: "",
+      proclamationPrayerDateFrom: "",
+      proclamationPrayerDateTo: "",
+      proclamationExecutionDateFrom: "",
+      proclamationExecutionDateTo: "",
+      attachmentPrayed: "",
+      attachmentPrayerDateFrom: "",
+      attachmentPrayerDateTo: "",
+      reportR1: "",
+      reportR1DateFrom: "",
+      reportR1DateTo: "",
+      reportSupervision: "",
+      reportSupervisionDateFrom: "",
+      reportSupervisionDateTo: "",
+      reportR2: "",
+      reportR2DateFrom: "",
+      reportR2DateTo: "",
+      reportR3: "",
+      reportR3DateFrom: "",
+      reportR3DateTo: "",
+      reportFPR: "",
+      reportFPRDateFrom: "",
+      reportFPRDateTo: "",
+      reportFinalChargesheet: "",
+      reportFinalChargesheetDateFrom: "",
+      reportFinalChargesheetDateTo: "",
       pageSize: 10,
     });
   }
@@ -458,26 +695,226 @@ export default function Home() {
 
             {/* Advanced Filters */}
             {showAdvancedFilters && (
-              <div className="mb-6 border-t border-slate-200 pt-6">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Date Filters</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {/* Case Date Range */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Case Date From</label>
-                    <input type="date" value={filters.caseDateFrom} onChange={(e) => setFilters({ ...filters, caseDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <div className="mb-6 border-t border-slate-200 pt-6 space-y-6">
+                {/* Date Filters */}
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Date Filters</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Case Date From</label>
+                      <input type="date" value={filters.caseDateFrom} onChange={(e) => setFilters({ ...filters, caseDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Case Date To</label>
+                      <input type="date" value={filters.caseDateTo} onChange={(e) => setFilters({ ...filters, caseDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Arrest Date From</label>
+                      <input type="date" value={filters.arrestDateFrom} onChange={(e) => setFilters({ ...filters, arrestDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Arrest Date To</label>
+                      <input type="date" value={filters.arrestDateTo} onChange={(e) => setFilters({ ...filters, arrestDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Case Date To</label>
-                    <input type="date" value={filters.caseDateTo} onChange={(e) => setFilters({ ...filters, caseDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+
+                {/* Warrant Filters */}
+                <div className="border-t border-slate-200 pt-6">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Warrant Filters</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Warrant Prayed</label>
+                      <select value={filters.warrantPrayed} onChange={(e) => setFilters({ ...filters, warrantPrayed: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Date From</label>
+                      <input type="date" value={filters.warrantPrayerDateFrom} onChange={(e) => setFilters({ ...filters, warrantPrayerDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Date To</label>
+                      <input type="date" value={filters.warrantPrayerDateTo} onChange={(e) => setFilters({ ...filters, warrantPrayerDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Execution Date From</label>
+                      <input type="date" value={filters.warrantExecutionDateFrom} onChange={(e) => setFilters({ ...filters, warrantExecutionDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Execution Date To</label>
+                      <input type="date" value={filters.warrantExecutionDateTo} onChange={(e) => setFilters({ ...filters, warrantExecutionDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
                   </div>
-                  {/* Arrest Date Range */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Arrest Date From</label>
-                    <input type="date" value={filters.arrestDateFrom} onChange={(e) => setFilters({ ...filters, arrestDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+
+                {/* Proclamation Filters */}
+                <div className="border-t border-slate-200 pt-6">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Proclamation Filters</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Proclamation Prayed</label>
+                      <select value={filters.proclamationPrayed} onChange={(e) => setFilters({ ...filters, proclamationPrayed: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Date From</label>
+                      <input type="date" value={filters.proclamationPrayerDateFrom} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Date To</label>
+                      <input type="date" value={filters.proclamationPrayerDateTo} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Execution Date From</label>
+                      <input type="date" value={filters.proclamationExecutionDateFrom} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Execution Date To</label>
+                      <input type="date" value={filters.proclamationExecutionDateTo} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Arrest Date To</label>
-                    <input type="date" value={filters.arrestDateTo} onChange={(e) => setFilters({ ...filters, arrestDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+
+                {/* Attachment Filters */}
+                <div className="border-t border-slate-200 pt-6">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Attachment Filters</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Attachment Prayed</label>
+                      <select value={filters.attachmentPrayed} onChange={(e) => setFilters({ ...filters, attachmentPrayed: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Date From</label>
+                      <input type="date" value={filters.attachmentPrayerDateFrom} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Prayer Date To</label>
+                      <input type="date" value={filters.attachmentPrayerDateTo} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Report Filters */}
+                <div className="border-t border-slate-200 pt-6">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Report Filters</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {/* R1 Report */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R1 Report</label>
+                      <select value={filters.reportR1} onChange={(e) => setFilters({ ...filters, reportR1: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R1 Date From</label>
+                      <input type="date" value={filters.reportR1DateFrom} onChange={(e) => setFilters({ ...filters, reportR1DateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R1 Date To</label>
+                      <input type="date" value={filters.reportR1DateTo} onChange={(e) => setFilters({ ...filters, reportR1DateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    
+                    {/* Supervision Report */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Supervision Report</label>
+                      <select value={filters.reportSupervision} onChange={(e) => setFilters({ ...filters, reportSupervision: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Supervision Date From</label>
+                      <input type="date" value={filters.reportSupervisionDateFrom} onChange={(e) => setFilters({ ...filters, reportSupervisionDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Supervision Date To</label>
+                      <input type="date" value={filters.reportSupervisionDateTo} onChange={(e) => setFilters({ ...filters, reportSupervisionDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+
+                    {/* R2 Report */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R2 Report</label>
+                      <select value={filters.reportR2} onChange={(e) => setFilters({ ...filters, reportR2: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R2 Date From</label>
+                      <input type="date" value={filters.reportR2DateFrom} onChange={(e) => setFilters({ ...filters, reportR2DateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R2 Date To</label>
+                      <input type="date" value={filters.reportR2DateTo} onChange={(e) => setFilters({ ...filters, reportR2DateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+
+                    {/* R3 Report */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R3 Report</label>
+                      <select value={filters.reportR3} onChange={(e) => setFilters({ ...filters, reportR3: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R3 Date From</label>
+                      <input type="date" value={filters.reportR3DateFrom} onChange={(e) => setFilters({ ...filters, reportR3DateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">R3 Date To</label>
+                      <input type="date" value={filters.reportR3DateTo} onChange={(e) => setFilters({ ...filters, reportR3DateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+
+                    {/* FPR Report */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">FPR Report</label>
+                      <select value={filters.reportFPR} onChange={(e) => setFilters({ ...filters, reportFPR: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">FPR Date From</label>
+                      <input type="date" value={filters.reportFPRDateFrom} onChange={(e) => setFilters({ ...filters, reportFPRDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">FPR Date To</label>
+                      <input type="date" value={filters.reportFPRDateTo} onChange={(e) => setFilters({ ...filters, reportFPRDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+
+                    {/* Final Chargesheet */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Final Chargesheet</label>
+                      <select value={filters.reportFinalChargesheet} onChange={(e) => setFilters({ ...filters, reportFinalChargesheet: e.target.value as any })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Final Chargesheet Date From</label>
+                      <input type="date" value={filters.reportFinalChargesheetDateFrom} onChange={(e) => setFilters({ ...filters, reportFinalChargesheetDateFrom: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Final Chargesheet Date To</label>
+                      <input type="date" value={filters.reportFinalChargesheetDateTo} onChange={(e) => setFilters({ ...filters, reportFinalChargesheetDateTo: e.target.value })} className="w-full rounded-lg border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
                   </div>
                 </div>
               </div>
