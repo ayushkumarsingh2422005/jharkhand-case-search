@@ -620,7 +620,7 @@ export default function CaseDetail() {
                       <p className="mt-2 text-slate-500">No reasons specified</p>
                     ) : (
                       <ul className="mt-2 space-y-1">
-                        {reasonForPendency.map((reason, idx) => (
+                        {reasonForPendency.map((reason: string, idx: number) => (
                           <li key={idx} className="flex items-center gap-2">
                             <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
                             <span className="font-medium text-slate-900">{reason}</span>
