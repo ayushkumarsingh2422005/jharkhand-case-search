@@ -487,10 +487,12 @@ export const generateCasePDF = (caseData: CaseData) => {
   }
 
   // Footer with generation date
-  // Get total pages from internal pages array
-  const internal = (doc as any).internal;
-  const totalPages = internal.pages ? internal.pages.length : 1;
+  // Get total pages - jsPDF 3.x uses internal.pages array
+  // Type assertion needed due to outdated type definitions
+  const internal = doc.internal as any;
+  const totalPages = internal.pages?.length || 1;
   
+  // Add footer to each page
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
