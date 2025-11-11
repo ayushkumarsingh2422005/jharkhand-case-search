@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 
 type AccusedStatus = "True" | "False" | "Decision Pending" | "Arrested" | "Not Arrested";
@@ -46,63 +46,168 @@ const REASON_FOR_PENDENCY_OPTIONS = [
 ];
 
 export default function CaseDetail() {
-  const params = useParams<{ caseId: string }>();
-  const caseNo = (params?.caseId ?? "").toString().replaceAll("-", "/");
+  const params = useParams<{ caseId: string | string[] | undefined }>();
+  // Handle caseId which could be string, array, or undefined
+  const caseId = Array.isArray(params?.caseId) ? params.caseId[0] : params?.caseId;
+  const caseNo = caseId && typeof caseId === 'string' ? caseId.replaceAll("-", "/") : "";
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [caseData, setCaseData] = useState<any>(null);
 
-  // Demo data mapped from case number
-  const summary = useMemo(
-    () => ({
-      caseNo,
-      year: Number(caseNo.split("/")[1] || new Date().getFullYear()),
-      policeStation: "Central PS",
-      crimeHead: "Fraud",
-      section: "420 IPC",
-      punishmentCategory: ">7 yrs",
-      totalAccused: 3,
-      caseStatus: "Under investigation" as CaseStatus,
-      investigationStatus: "Detected" as InvestigationStatus,
-      priority: "Under monitoring" as Priority,
-      isPropertyProfessionalCrime: true,
-      petition: false,
-      finalChargesheetSubmitted: false,
-      finalChargesheetSubmissionDate: undefined as string | undefined,
-    }),
-    [caseNo]
-  );
+  useEffect(() => {
+    if (caseId && typeof caseId === 'string') {
+      fetchCase();
+    } else {
+      setError("Case ID is missing");
+      setLoading(false);
+    }
+  }, [caseId]);
+
+  const fetchCase = async () => {
+    if (!caseId || typeof caseId !== 'string') {
+      setError("Case ID is missing");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/cases/${caseId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setCaseData(data.data);
+      } else {
+        setError(data.error || "Failed to fetch case");
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const summary = useMemo(() => {
+    if (!caseData) {
+      const yearFromCaseNo = caseNo ? Number(caseNo.split("/")[1] || new Date().getFullYear()) : new Date().getFullYear();
+      return {
+        caseNo: caseNo || "",
+        year: yearFromCaseNo,
+        policeStation: "",
+        crimeHead: "",
+        section: "",
+        punishmentCategory: ">7 yrs" as "≤7 yrs" | ">7 yrs",
+        totalAccused: 0,
+        caseStatus: "Under investigation" as CaseStatus,
+        investigationStatus: undefined as InvestigationStatus | undefined,
+        priority: "Normal" as Priority,
+        isPropertyProfessionalCrime: false,
+        petition: false,
+        finalChargesheetSubmitted: false,
+        finalChargesheetSubmissionDate: undefined as string | undefined,
+      };
+    }
+
+    const yearFromCaseNo = caseNo ? Number(caseNo.split("/")[1] || new Date().getFullYear()) : new Date().getFullYear();
+    return {
+      caseNo: caseData.caseNo || caseNo || "",
+      year: caseData.year || yearFromCaseNo,
+      policeStation: caseData.policeStation || "",
+      crimeHead: caseData.crimeHead || "",
+      section: caseData.crimeSection || caseData.section || "",
+      punishmentCategory: (caseData.punishmentCategory || ">7 yrs") as "≤7 yrs" | ">7 yrs",
+      totalAccused: caseData.accused?.length || 0,
+      caseStatus: (caseData.caseStatus || "Under investigation") as CaseStatus,
+      investigationStatus: caseData.investigationStatus as InvestigationStatus | undefined,
+      priority: (caseData.priority || "Normal") as Priority,
+      isPropertyProfessionalCrime: caseData.isPropertyProfessionalCrime || false,
+      petition: caseData.petition || false,
+      finalChargesheetSubmitted: caseData.finalChargesheetSubmitted || false,
+      finalChargesheetSubmissionDate: caseData.finalChargesheetSubmissionDate,
+    };
+  }, [caseData, caseNo]);
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "accused" | "notices" | "prosecution" | "victim" | "reports" | "petition"
+    "overview" | "accused" | "notices" | "prosecution" | "victim" | "reports" | "petition" | "notes"
   >("overview");
 
-  const accused: AccusedInfo[] = [
-    {
-      name: "A1: Rakesh Kumar",
-      status: "Arrested",
-      arrestedOn: "2025-01-02",
-      notice41A: {
-        issued: true,
-        notice1Date: "2025-02-12",
-        notice2Date: "2025-02-28",
-      },
-      warrant: {
-        prayed: true,
-        prayerDate: "2025-03-05",
-        receiptDate: "2025-03-06",
-      },
-    },
-    {
-      name: "A2: Suman Verma",
-      status: "Not Arrested",
-      notice41A: {
-        issued: true,
-        notice1Date: "2025-02-15",
-      },
-    },
-    {
-      name: "A3: Unknown",
-      status: "Decision Pending",
-    },
-  ];
+  // Notes state (read-only)
+  type Note = {
+    id: string;
+    content: string;
+    author: string;
+    createdAt: string;
+  };
+
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoading, setNotesLoading] = useState(true);
+
+  useEffect(() => {
+    if (caseData?._id) {
+      const fetchNotes = async () => {
+        try {
+          setNotesLoading(true);
+          const response = await fetch(`/api/notes?caseId=${caseData._id}`);
+          const data = await response.json();
+          
+          if (data.success) {
+            setNotes(data.data.map((note: any) => ({
+              id: note._id,
+              content: note.content,
+              author: note.author,
+              createdAt: note.createdAt,
+            })));
+          }
+        } catch (error) {
+          console.error("Failed to fetch notes:", error);
+        } finally {
+          setNotesLoading(false);
+        }
+      };
+      fetchNotes();
+    }
+  }, [caseData?._id]);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const accused: AccusedInfo[] = useMemo(() => {
+    if (!caseData?.accused) return [];
+    
+    return caseData.accused.map((acc: any) => ({
+      name: acc.name || "",
+      status: (acc.status || "Decision Pending") as AccusedStatus,
+      arrestedOn: acc.arrestedDate || acc.arrestedOn,
+      notice41A: acc.notice41A ? {
+        issued: acc.notice41A.issued || false,
+        notice1Date: acc.notice41A.notice1Date,
+        notice2Date: acc.notice41A.notice2Date,
+        notice3Date: acc.notice41A.notice3Date,
+      } : undefined,
+      warrant: acc.warrant ? {
+        prayed: acc.warrant.prayed || false,
+        prayerDate: acc.warrant.prayerDate,
+        receiptDate: acc.warrant.receiptDate,
+        executionDate: acc.warrant.executionDate,
+        returnDate: acc.warrant.returnDate,
+      } : undefined,
+      proclamation: acc.proclamation ? {
+        prayed: acc.proclamation.prayed || false,
+        prayerDate: acc.proclamation.prayerDate,
+        receiptDate: acc.proclamation.receiptDate,
+        executionDate: acc.proclamation.executionDate,
+        returnDate: acc.proclamation.returnDate,
+      } : undefined,
+    }));
+  }, [caseData]);
 
   // Calculate days passed after arrest
   const getDaysAfterArrest = (arrestedOn?: string) => {
@@ -132,13 +237,42 @@ export default function CaseDetail() {
     return null;
   };
 
-  const reasonForPendency = ["Awaiting prosecution sanction", "Awaiting FSL report"];
+  const reasonForPendency = useMemo(() => {
+    return caseData?.reasonForPendency || [];
+  }, [caseData]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl p-4 md:p-6">
+        <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200 p-8 text-center">
+          <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <p className="text-slate-600">Loading case details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !caseData) {
+    return (
+      <div className="mx-auto max-w-7xl p-4 md:p-6">
+        <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200 p-8 text-center">
+          <p className="text-red-600 mb-4">{error || "Case not found"}</p>
+          <Link href="/" className="text-blue-700 hover:underline">Back to Search</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl p-4 md:p-6">
       {/* Breadcrumbs */}
       <div className="mb-4 text-sm text-slate-600">
         <Link href="/" className="text-blue-700 hover:underline">Search</Link>
+        <span className="mx-2">/</span>
+        <Link href="/dashboard" className="text-blue-700 hover:underline">Dashboard</Link>
         <span className="mx-2">/</span>
         <span className="font-medium">Case Detail</span>
       </div>
@@ -189,6 +323,7 @@ export default function CaseDetail() {
               { id: "victim", label: "Victim" },
               { id: "reports", label: "Reports" },
               { id: "petition", label: "Petition" },
+              { id: "notes", label: "Notes" },
             ].map((t) => (
               <button
                 key={t.id}
@@ -215,10 +350,22 @@ export default function CaseDetail() {
                 </ul>
               </Card>
               <Card title="Progress">
-                <ProgressRow label="Arrest(s)" value="1 of 3" />
-                <ProgressRow label="41A Notices" value="2 issued" />
-                <ProgressRow label="Warrants" value="1 prayed" />
-                <ProgressRow label="Charge Sheet" value="Pending" />
+                <ProgressRow 
+                  label="Arrest(s)" 
+                  value={`${accused.filter(a => a.status === "Arrested" || a.status === "True").length} of ${accused.length}`} 
+                />
+                <ProgressRow 
+                  label="41A Notices" 
+                  value={`${accused.filter(a => a.notice41A?.issued).length} issued`} 
+                />
+                <ProgressRow 
+                  label="Warrants" 
+                  value={`${accused.filter(a => a.warrant?.prayed).length} prayed`} 
+                />
+                <ProgressRow 
+                  label="Charge Sheet" 
+                  value={summary.finalChargesheetSubmitted ? "Submitted" : "Pending"} 
+                />
               </Card>
             </div>
           )}
@@ -323,31 +470,47 @@ export default function CaseDetail() {
           {activeTab === "notices" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="41A Notice">
-                <FieldRow label="Issued" value="Yes" />
-                <FieldRow label="Notice 1 - Date" value="2025-02-12" />
-                <FieldRow label="Notice 2 - Date" value="2025-02-28" />
-                <FieldRow label="Notice 3 - Date" value="—" />
+                <FieldRow label="Issued" value={caseData?.notice41A?.issued ? "Yes" : "No"} />
+                {caseData?.notice41A?.issued && (
+                  <>
+                    <FieldRow label="Notice 1 - Date" value={caseData.notice41A.notice1Date ? new Date(caseData.notice41A.notice1Date).toLocaleDateString() : "—"} />
+                    <FieldRow label="Notice 2 - Date" value={caseData.notice41A.notice2Date ? new Date(caseData.notice41A.notice2Date).toLocaleDateString() : "—"} />
+                    <FieldRow label="Notice 3 - Date" value={caseData.notice41A.notice3Date ? new Date(caseData.notice41A.notice3Date).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
               <Card title="Warrant">
-                <FieldRow label="Prayed" value="Yes" />
-                <FieldRow label="Date of Prayer" value="2025-03-05" />
-                <FieldRow label="Date of Receipt" value="2025-03-06" />
-                <FieldRow label="Date of Execution" value="—" />
-                <FieldRow label="Date of Return" value="—" />
+                <FieldRow label="Prayed" value={caseData?.warrant?.prayed ? "Yes" : "No"} />
+                {caseData?.warrant?.prayed && (
+                  <>
+                    <FieldRow label="Date of Prayer" value={caseData.warrant.prayerDate ? new Date(caseData.warrant.prayerDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Receipt" value={caseData.warrant.receiptDate ? new Date(caseData.warrant.receiptDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Execution" value={caseData.warrant.executionDate ? new Date(caseData.warrant.executionDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Return" value={caseData.warrant.returnDate ? new Date(caseData.warrant.returnDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
               <Card title="Proclamation">
-                <FieldRow label="Prayed" value="Yes" />
-                <FieldRow label="Date of Prayer" value="2025-03-10" />
-                <FieldRow label="Date of Receipt" value="2025-03-12" />
-                <FieldRow label="Date of Execution" value="—" />
-                <FieldRow label="Date of Return" value="—" />
+                <FieldRow label="Prayed" value={caseData?.proclamation?.prayed ? "Yes" : "No"} />
+                {caseData?.proclamation?.prayed && (
+                  <>
+                    <FieldRow label="Date of Prayer" value={caseData.proclamation.prayerDate ? new Date(caseData.proclamation.prayerDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Receipt" value={caseData.proclamation.receiptDate ? new Date(caseData.proclamation.receiptDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Execution" value={caseData.proclamation.executionDate ? new Date(caseData.proclamation.executionDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Return" value={caseData.proclamation.returnDate ? new Date(caseData.proclamation.returnDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
               <Card title="Attachment">
-                <FieldRow label="Prayed" value="No" />
-                <FieldRow label="Date of Prayer" value="—" />
-                <FieldRow label="Date of Receipt" value="—" />
-                <FieldRow label="Date of Execution" value="—" />
-                <FieldRow label="Date of Return" value="—" />
+                <FieldRow label="Prayed" value={caseData?.attachment?.prayed ? "Yes" : "No"} />
+                {caseData?.attachment?.prayed && (
+                  <>
+                    <FieldRow label="Date of Prayer" value={caseData.attachment.prayerDate ? new Date(caseData.attachment.prayerDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Receipt" value={caseData.attachment.receiptDate ? new Date(caseData.attachment.receiptDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Execution" value={caseData.attachment.executionDate ? new Date(caseData.attachment.executionDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Return" value={caseData.attachment.returnDate ? new Date(caseData.attachment.returnDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
             </div>
           )}
@@ -355,30 +518,42 @@ export default function CaseDetail() {
           {activeTab === "prosecution" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="Charge Sheet">
-                <FieldRow label="Submitted" value="No" />
-                <FieldRow label="Date of Submission" value="—" />
-                <FieldRow label="Date of Receipt" value="—" />
+                <FieldRow label="Submitted" value={caseData?.chargeSheet?.submitted ? "Yes" : "No"} />
+                {caseData?.chargeSheet?.submitted && (
+                  <>
+                    <FieldRow label="Date of Submission" value={caseData.chargeSheet.submissionDate ? new Date(caseData.chargeSheet.submissionDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Receipt" value={caseData.chargeSheet.receiptDate ? new Date(caseData.chargeSheet.receiptDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
               <Card title="Final Charge Sheet Submission in Court">
                 <FieldRow label="Submitted" value={summary.finalChargesheetSubmitted ? "Yes" : "No"} />
                 {summary.finalChargesheetSubmitted && summary.finalChargesheetSubmissionDate && (
-                  <FieldRow label="Date of Submission" value={summary.finalChargesheetSubmissionDate} />
+                  <FieldRow label="Date of Submission" value={new Date(summary.finalChargesheetSubmissionDate).toLocaleDateString()} />
                 )}
               </Card>
               <Card title="Prosecution Sanction">
-                <FieldRow label="Required" value="Yes" />
-                <FieldRow label="Date of Submission" value="2025-02-02" />
-                <FieldRow label="Date of Receipt" value="—" />
+                <FieldRow label="Required" value={caseData?.prosecutionSanction?.required ? "Yes" : "No"} />
+                {caseData?.prosecutionSanction?.submissionDate && (
+                  <>
+                    <FieldRow label="Date of Submission" value={new Date(caseData.prosecutionSanction.submissionDate).toLocaleDateString()} />
+                    <FieldRow label="Date of Receipt" value={caseData.prosecutionSanction.receiptDate ? new Date(caseData.prosecutionSanction.receiptDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
               <Card title="FSL / Forensic">
-                <FieldRow label="FSL Report Required" value="Yes" />
-                <FieldRow label="Sample to be Collected" value="Oral swab, 2 samples" />
-                <FieldRow label="Sample Collected" value="Yes" />
-                <FieldRow label="Date of Sample Collection" value="2025-02-18" />
-                <FieldRow label="Date of Sample Sending" value="2025-02-19" />
-                <FieldRow label="FSL Report Received" value="No" />
-                <FieldRow label="Date of Report Received" value="—" />
-                <FieldRow label="Date of Report" value="—" />
+                <FieldRow label="FSL Report Required" value={caseData?.fsl?.reportRequired ? "Yes" : "No"} />
+                {caseData?.fsl && (
+                  <>
+                    <FieldRow label="Sample to be Collected" value={caseData.fsl.sampleToBeCollected || "—"} />
+                    <FieldRow label="Sample Collected" value={caseData.fsl.sampleCollected ? "Yes" : "No"} />
+                    <FieldRow label="Date of Sample Collection" value={caseData.fsl.sampleCollectionDate ? new Date(caseData.fsl.sampleCollectionDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Sample Sending" value={caseData.fsl.sampleSendingDate ? new Date(caseData.fsl.sampleSendingDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="FSL Report Received" value={caseData.fsl.reportReceived ? "Yes" : "No"} />
+                    <FieldRow label="Date of Report Received" value={caseData.fsl.reportReceivedDate ? new Date(caseData.fsl.reportReceivedDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Date of Report" value={caseData.fsl.reportDate ? new Date(caseData.fsl.reportDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
             </div>
           )}
@@ -386,21 +561,33 @@ export default function CaseDetail() {
           {activeTab === "victim" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="Injury Report">
-                <FieldRow label="Injury Report" value="Yes" />
-                <FieldRow label="Date of Injury" value="2025-01-15" />
-                <FieldRow label="Report Received" value="Yes" />
-                <FieldRow label="Date of Report" value="2025-01-20" />
+                <FieldRow label="Injury Report" value={caseData?.injuryReport?.report ? "Yes" : "No"} />
+                {caseData?.injuryReport && (
+                  <>
+                    <FieldRow label="Date of Injury" value={caseData.injuryReport.injuryDate ? new Date(caseData.injuryReport.injuryDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Report Received" value={caseData.injuryReport.reportReceived ? "Yes" : "No"} />
+                    <FieldRow label="Date of Report" value={caseData.injuryReport.reportDate ? new Date(caseData.injuryReport.reportDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
               <Card title="PM Report (Post Mortem)">
-                <FieldRow label="PM Report" value="N/A" />
-                <FieldRow label="Date of PM" value="—" />
-                <FieldRow label="Report Received" value="—" />
-                <FieldRow label="Date of Report" value="—" />
+                <FieldRow label="PM Report" value={caseData?.pmReport?.report || "N/A"} />
+                {caseData?.pmReport && (
+                  <>
+                    <FieldRow label="Date of PM" value={caseData.pmReport.pmDate ? new Date(caseData.pmReport.pmDate).toLocaleDateString() : "—"} />
+                    <FieldRow label="Report Received" value={caseData.pmReport.reportReceived ? "Yes" : "No"} />
+                    <FieldRow label="Date of Report" value={caseData.pmReport.reportDate ? new Date(caseData.pmReport.reportDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
               <Card title="Compensation Proposal">
-                <FieldRow label="Compensation Proposal Required" value="Yes" />
-                <FieldRow label="Compensation Proposal Submitted" value="Yes" />
-                <FieldRow label="Date of Submission" value="2025-02-10" />
+                <FieldRow label="Compensation Proposal Required" value={caseData?.compensationProposal?.required ? "Yes" : "No"} />
+                {caseData?.compensationProposal && (
+                  <>
+                    <FieldRow label="Compensation Proposal Submitted" value={caseData.compensationProposal.submitted ? "Yes" : "No"} />
+                    <FieldRow label="Date of Submission" value={caseData.compensationProposal.submissionDate ? new Date(caseData.compensationProposal.submissionDate).toLocaleDateString() : "—"} />
+                  </>
+                )}
               </Card>
             </div>
           )}
@@ -408,33 +595,39 @@ export default function CaseDetail() {
           {activeTab === "reports" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="Internal Reports">
-                <FieldRow label="R1" value="2025-01-12" />
-                <FieldRow label="Supervision" value="2025-02-01" />
-                <FieldRow label="R2" value="2025-02-15" />
-                <FieldRow label="R3" value="—" />
-                <FieldRow label="PR1 (DSP)" value="2025-02-20" />
-                <FieldRow label="PR2 (DSP)" value="2025-03-01" />
-                <FieldRow label="PR3 (DSP)" value="—" />
-                <FieldRow label="FPR" value="2025-03-10" />
-                <FieldRow label="Final Order" value="—" />
-                <FieldRow label="Final Chargesheet" value="—" />
+                <FieldRow label="R1" value={caseData?.reports?.r1 ? new Date(caseData.reports.r1).toLocaleDateString() : "—"} />
+                <FieldRow label="Supervision" value={caseData?.reports?.supervision ? new Date(caseData.reports.supervision).toLocaleDateString() : "—"} />
+                <FieldRow label="R2" value={caseData?.reports?.r2 ? new Date(caseData.reports.r2).toLocaleDateString() : "—"} />
+                <FieldRow label="R3" value={caseData?.reports?.r3 ? new Date(caseData.reports.r3).toLocaleDateString() : "—"} />
+                <FieldRow label="PR1 (DSP)" value={caseData?.reports?.pr1 ? new Date(caseData.reports.pr1).toLocaleDateString() : "—"} />
+                <FieldRow label="PR2 (DSP)" value={caseData?.reports?.pr2 ? new Date(caseData.reports.pr2).toLocaleDateString() : "—"} />
+                <FieldRow label="PR3 (DSP)" value={caseData?.reports?.pr3 ? new Date(caseData.reports.pr3).toLocaleDateString() : "—"} />
+                <FieldRow label="FPR" value={caseData?.reports?.fpr ? new Date(caseData.reports.fpr).toLocaleDateString() : "—"} />
+                <FieldRow label="Final Order" value={caseData?.reports?.finalOrder ? new Date(caseData.reports.finalOrder).toLocaleDateString() : "—"} />
+                <FieldRow label="Final Chargesheet" value={caseData?.reports?.finalChargesheet ? new Date(caseData.reports.finalChargesheet).toLocaleDateString() : "—"} />
               </Card>
               <Card title="Reasons for Pendency">
                 <div className="space-y-2">
                   <div className="text-sm">
                     <span className="text-slate-600 font-medium">Diary No. & Date:</span>
-                    <span className="ml-2 font-medium text-slate-900">—</span>
+                    <span className="ml-2 font-medium text-slate-900">
+                      {caseData?.diaryNo || "—"} {caseData?.diaryDate ? `• ${new Date(caseData.diaryDate).toLocaleDateString()}` : ""}
+                    </span>
                   </div>
                   <div className="text-sm">
                     <span className="text-slate-600 font-medium">Reason:</span>
-                    <ul className="mt-2 space-y-1">
-                      {reasonForPendency.map((reason, idx) => (
-                        <li key={idx} className="flex items-center gap-2">
-                          <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                          <span className="font-medium text-slate-900">{reason}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {reasonForPendency.length === 0 ? (
+                      <p className="mt-2 text-slate-500">No reasons specified</p>
+                    ) : (
+                      <ul className="mt-2 space-y-1">
+                        {reasonForPendency.map((reason, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                            <span className="font-medium text-slate-900">{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -447,6 +640,46 @@ export default function CaseDetail() {
                 <FieldRow label="Petition" value={summary.petition ? "Yes" : "No"} />
               </Card>
             </div>
+          )}
+
+          {activeTab === "notes" && (
+            <Card title={`Notes (${notes.length})`}>
+              {notesLoading ? (
+                <div className="text-center py-8 text-slate-500">
+                  <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <p className="text-sm">Loading notes...</p>
+                </div>
+              ) : notes.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <svg className="mx-auto h-12 w-12 text-slate-400 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  <p className="text-sm">No notes available for this case.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {notes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="border border-slate-200 rounded-lg p-4"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-slate-900">{note.author}</span>
+                        <span className="text-xs text-slate-500">•</span>
+                        <span className="text-xs text-slate-500">{formatDate(note.createdAt)}</span>
+                      </div>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
           )}
         </div>
       </div>
