@@ -5,6 +5,7 @@ import Link from "next/link";
 
 type CaseStatus = "Disposed" | "Under investigation" | "Decision Pending";
 type InvestigationStatus = "Detected" | "Undetected";
+type SrNsr = "SR" | "NSR";
 type Priority = "Under monitoring" | "Normal";
 type AccusedStatus = "Arrested" | "Not arrested" | "Decision pending";
 
@@ -58,39 +59,12 @@ export default function EditCase() {
     caseDate: "",
     caseStatus: "Under investigation" as CaseStatus,
     investigationStatus: "" as InvestigationStatus | "",
+    srNsr: "" as SrNsr | "",
     priority: "Normal" as Priority,
     isPropertyProfessionalCrime: false,
     petition: false,
     reasonForPendency: [] as string[],
-    diaryNo: "",
-    diaryDate: "",
-    warrant: {
-      prayed: false,
-      prayerDate: "",
-      receiptDate: "",
-      executionDate: "",
-      returnDate: "",
-    },
-    proclamation: {
-      prayed: false,
-      prayerDate: "",
-      receiptDate: "",
-      executionDate: "",
-      returnDate: "",
-    },
-    attachment: {
-      prayed: false,
-      prayerDate: "",
-      receiptDate: "",
-      executionDate: "",
-      returnDate: "",
-    },
-    notice41A: {
-      issued: false,
-      notice1Date: "",
-      notice2Date: "",
-      notice3Date: "",
-    },
+    diary: [] as Array<{ diaryNo: string; diaryDate: string }>,
     reports: {
       r1: "",
       supervision: "",
@@ -106,25 +80,24 @@ export default function EditCase() {
     chargeSheet: {
       submitted: false,
       submissionDate: "",
-      receiptDate: "",
     },
     finalChargesheetSubmitted: false,
     finalChargesheetSubmissionDate: "",
-    prosecutionSanction: {
-      required: false,
-      submissionDate: "",
-      receiptDate: "",
-    },
-    fsl: {
-      reportRequired: false,
-      sampleToBeCollected: "",
-      sampleCollected: false,
-      sampleCollectionDate: "",
-      sampleSendingDate: "",
-      reportReceived: false,
-      reportReceivedDate: "",
-      reportDate: "",
-    },
+    prosecutionSanction: [] as Array<{
+      type: string;
+      submissionDate: string;
+      receiptDate: string;
+    }>,
+    fsl: [] as Array<{
+      reportRequired: boolean;
+      sampleToBeCollected: string;
+      sampleCollected: boolean;
+      sampleCollectionDate: string;
+      sampleSendingDate: string;
+      reportReceived: boolean;
+      reportReceivedDate: string;
+      reportDate: string;
+    }>,
     injuryReport: {
       report: false,
       injuryDate: "",
@@ -237,39 +210,17 @@ export default function EditCase() {
           caseDate: fetchedCaseData.caseDate ? new Date(fetchedCaseData.caseDate).toISOString().split('T')[0] : "",
           caseStatus: fetchedCaseData.caseStatus || "Under investigation",
           investigationStatus: fetchedCaseData.investigationStatus || "",
+          srNsr: fetchedCaseData.srNsr || "",
           priority: fetchedCaseData.priority || "Normal",
           isPropertyProfessionalCrime: fetchedCaseData.isPropertyProfessionalCrime || false,
           petition: fetchedCaseData.petition || false,
           reasonForPendency: fetchedCaseData.reasonForPendency || [],
-          diaryNo: fetchedCaseData.diaryNo || "",
-          diaryDate: fetchedCaseData.diaryDate ? new Date(fetchedCaseData.diaryDate).toISOString().split('T')[0] : "",
-          warrant: {
-            prayed: fetchedCaseData.warrant?.prayed || false,
-            prayerDate: fetchedCaseData.warrant?.prayerDate ? new Date(fetchedCaseData.warrant.prayerDate).toISOString().split('T')[0] : "",
-            receiptDate: fetchedCaseData.warrant?.receiptDate ? new Date(fetchedCaseData.warrant.receiptDate).toISOString().split('T')[0] : "",
-            executionDate: fetchedCaseData.warrant?.executionDate ? new Date(fetchedCaseData.warrant.executionDate).toISOString().split('T')[0] : "",
-            returnDate: fetchedCaseData.warrant?.returnDate ? new Date(fetchedCaseData.warrant.returnDate).toISOString().split('T')[0] : "",
-          },
-          proclamation: {
-            prayed: fetchedCaseData.proclamation?.prayed || false,
-            prayerDate: fetchedCaseData.proclamation?.prayerDate ? new Date(fetchedCaseData.proclamation.prayerDate).toISOString().split('T')[0] : "",
-            receiptDate: fetchedCaseData.proclamation?.receiptDate ? new Date(fetchedCaseData.proclamation.receiptDate).toISOString().split('T')[0] : "",
-            executionDate: fetchedCaseData.proclamation?.executionDate ? new Date(fetchedCaseData.proclamation.executionDate).toISOString().split('T')[0] : "",
-            returnDate: fetchedCaseData.proclamation?.returnDate ? new Date(fetchedCaseData.proclamation.returnDate).toISOString().split('T')[0] : "",
-          },
-          attachment: {
-            prayed: fetchedCaseData.attachment?.prayed || false,
-            prayerDate: fetchedCaseData.attachment?.prayerDate ? new Date(fetchedCaseData.attachment.prayerDate).toISOString().split('T')[0] : "",
-            receiptDate: fetchedCaseData.attachment?.receiptDate ? new Date(fetchedCaseData.attachment.receiptDate).toISOString().split('T')[0] : "",
-            executionDate: fetchedCaseData.attachment?.executionDate ? new Date(fetchedCaseData.attachment.executionDate).toISOString().split('T')[0] : "",
-            returnDate: fetchedCaseData.attachment?.returnDate ? new Date(fetchedCaseData.attachment.returnDate).toISOString().split('T')[0] : "",
-          },
-          notice41A: {
-            issued: fetchedCaseData.notice41A?.issued || false,
-            notice1Date: fetchedCaseData.notice41A?.notice1Date ? new Date(fetchedCaseData.notice41A.notice1Date).toISOString().split('T')[0] : "",
-            notice2Date: fetchedCaseData.notice41A?.notice2Date ? new Date(fetchedCaseData.notice41A.notice2Date).toISOString().split('T')[0] : "",
-            notice3Date: fetchedCaseData.notice41A?.notice3Date ? new Date(fetchedCaseData.notice41A.notice3Date).toISOString().split('T')[0] : "",
-          },
+          diary: fetchedCaseData.diary && Array.isArray(fetchedCaseData.diary) 
+            ? fetchedCaseData.diary.map((entry: any) => ({
+                diaryNo: entry.diaryNo || "",
+                diaryDate: entry.diaryDate ? new Date(entry.diaryDate).toISOString().split('T')[0] : "",
+              }))
+            : [],
           reports: {
             r1: fetchedCaseData.reports?.r1 ? new Date(fetchedCaseData.reports.r1).toISOString().split('T')[0] : "",
             supervision: fetchedCaseData.reports?.supervision ? new Date(fetchedCaseData.reports.supervision).toISOString().split('T')[0] : "",
@@ -285,25 +236,28 @@ export default function EditCase() {
           chargeSheet: {
             submitted: fetchedCaseData.chargeSheet?.submitted || false,
             submissionDate: fetchedCaseData.chargeSheet?.submissionDate ? new Date(fetchedCaseData.chargeSheet.submissionDate).toISOString().split('T')[0] : "",
-            receiptDate: fetchedCaseData.chargeSheet?.receiptDate ? new Date(fetchedCaseData.chargeSheet.receiptDate).toISOString().split('T')[0] : "",
           },
           finalChargesheetSubmitted: fetchedCaseData.finalChargesheetSubmitted || false,
           finalChargesheetSubmissionDate: fetchedCaseData.finalChargesheetSubmissionDate ? new Date(fetchedCaseData.finalChargesheetSubmissionDate).toISOString().split('T')[0] : "",
-          prosecutionSanction: {
-            required: fetchedCaseData.prosecutionSanction?.required || false,
-            submissionDate: fetchedCaseData.prosecutionSanction?.submissionDate ? new Date(fetchedCaseData.prosecutionSanction.submissionDate).toISOString().split('T')[0] : "",
-            receiptDate: fetchedCaseData.prosecutionSanction?.receiptDate ? new Date(fetchedCaseData.prosecutionSanction.receiptDate).toISOString().split('T')[0] : "",
-          },
-          fsl: {
-            reportRequired: fetchedCaseData.fsl?.reportRequired || false,
-            sampleToBeCollected: fetchedCaseData.fsl?.sampleToBeCollected || "",
-            sampleCollected: fetchedCaseData.fsl?.sampleCollected || false,
-            sampleCollectionDate: fetchedCaseData.fsl?.sampleCollectionDate ? new Date(fetchedCaseData.fsl.sampleCollectionDate).toISOString().split('T')[0] : "",
-            sampleSendingDate: fetchedCaseData.fsl?.sampleSendingDate ? new Date(fetchedCaseData.fsl.sampleSendingDate).toISOString().split('T')[0] : "",
-            reportReceived: fetchedCaseData.fsl?.reportReceived || false,
-            reportReceivedDate: fetchedCaseData.fsl?.reportReceivedDate ? new Date(fetchedCaseData.fsl.reportReceivedDate).toISOString().split('T')[0] : "",
-            reportDate: fetchedCaseData.fsl?.reportDate ? new Date(fetchedCaseData.fsl.reportDate).toISOString().split('T')[0] : "",
-          },
+          prosecutionSanction: fetchedCaseData.prosecutionSanction && Array.isArray(fetchedCaseData.prosecutionSanction)
+            ? fetchedCaseData.prosecutionSanction.map((sanction: any) => ({
+                type: sanction.type || "",
+                submissionDate: sanction.submissionDate ? new Date(sanction.submissionDate).toISOString().split('T')[0] : "",
+                receiptDate: sanction.receiptDate ? new Date(sanction.receiptDate).toISOString().split('T')[0] : "",
+              }))
+            : [],
+          fsl: fetchedCaseData.fsl && Array.isArray(fetchedCaseData.fsl)
+            ? fetchedCaseData.fsl.map((fslEntry: any) => ({
+                reportRequired: fslEntry.reportRequired || false,
+                sampleToBeCollected: fslEntry.sampleToBeCollected || "",
+                sampleCollected: fslEntry.sampleCollected || false,
+                sampleCollectionDate: fslEntry.sampleCollectionDate ? new Date(fslEntry.sampleCollectionDate).toISOString().split('T')[0] : "",
+                sampleSendingDate: fslEntry.sampleSendingDate ? new Date(fslEntry.sampleSendingDate).toISOString().split('T')[0] : "",
+                reportReceived: fslEntry.reportReceived || false,
+                reportReceivedDate: fslEntry.reportReceivedDate ? new Date(fslEntry.reportReceivedDate).toISOString().split('T')[0] : "",
+                reportDate: fslEntry.reportDate ? new Date(fslEntry.reportDate).toISOString().split('T')[0] : "",
+              }))
+            : [],
           injuryReport: {
             report: fetchedCaseData.injuryReport?.report || false,
             injuryDate: fetchedCaseData.injuryReport?.injuryDate ? new Date(fetchedCaseData.injuryReport.injuryDate).toISOString().split('T')[0] : "",
@@ -398,23 +352,26 @@ export default function EditCase() {
     }));
   };
 
-  const updateCaseLegalProcess = (processType: 'warrant' | 'proclamation' | 'attachment', field: string, value: any) => {
+  const addDiaryEntry = () => {
     setFormData(prev => ({
       ...prev,
-      [processType]: {
-        ...(prev[processType] || {}),
-        [field]: value,
-      },
+      diary: [...prev.diary, { diaryNo: "", diaryDate: "" }],
     }));
   };
 
-  const updateCaseNotice41A = (field: string, value: any) => {
+  const updateDiaryEntry = (index: number, field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      notice41A: {
-        ...(prev.notice41A || {}),
-        [field]: value,
-      },
+      diary: prev.diary.map((entry, i) =>
+        i === index ? { ...entry, [field]: value } : entry
+      ),
+    }));
+  };
+
+  const removeDiaryEntry = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      diary: prev.diary.filter((_, i) => i !== index),
     }));
   };
 
@@ -438,23 +395,58 @@ export default function EditCase() {
     }));
   };
 
-  const updateProsecutionSanction = (field: string, value: any) => {
+  const addProsecutionSanction = () => {
     setFormData(prev => ({
       ...prev,
-      prosecutionSanction: {
-        ...(prev.prosecutionSanction || {}),
-        [field]: value,
-      },
+      prosecutionSanction: [...prev.prosecutionSanction, { type: "", submissionDate: "", receiptDate: "" }],
     }));
   };
 
-  const updateFSL = (field: string, value: any) => {
+  const updateProsecutionSanction = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      fsl: {
-        ...(prev.fsl || {}),
-        [field]: value,
-      },
+      prosecutionSanction: prev.prosecutionSanction.map((sanction, i) =>
+        i === index ? { ...sanction, [field]: value } : sanction
+      ),
+    }));
+  };
+
+  const removeProsecutionSanction = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      prosecutionSanction: prev.prosecutionSanction.filter((_, i) => i !== index),
+    }));
+  };
+
+  const addFSL = () => {
+    setFormData(prev => ({
+      ...prev,
+      fsl: [...prev.fsl, {
+        reportRequired: false,
+        sampleToBeCollected: "",
+        sampleCollected: false,
+        sampleCollectionDate: "",
+        sampleSendingDate: "",
+        reportReceived: false,
+        reportReceivedDate: "",
+        reportDate: "",
+      }],
+    }));
+  };
+
+  const updateFSL = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      fsl: prev.fsl.map((fslEntry, i) =>
+        i === index ? { ...fslEntry, [field]: value } : fslEntry
+      ),
+    }));
+  };
+
+  const removeFSL = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      fsl: prev.fsl.filter((_, i) => i !== index),
     }));
   };
 
@@ -524,6 +516,10 @@ export default function EditCase() {
       const cleanedData = cleanNestedDates({
         ...formData,
         investigationStatus: formData.investigationStatus || undefined,
+        srNsr: formData.srNsr || undefined,
+        diary: formData.diary.filter(entry => entry.diaryNo || entry.diaryDate),
+        prosecutionSanction: formData.prosecutionSanction.filter(sanction => sanction.type),
+        fsl: formData.fsl.filter(fslEntry => fslEntry.reportRequired || fslEntry.sampleToBeCollected || fslEntry.sampleCollected),
         pmReport: {
           ...formData.pmReport,
           report: formData.pmReport.report || undefined,
@@ -784,6 +780,19 @@ export default function EditCase() {
                 </div>
               )}
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">SR/NSR</label>
+                <select
+                  name="srNsr"
+                  value={formData.srNsr}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                >
+                  <option value="">Select</option>
+                  <option value="SR">SR</option>
+                  <option value="NSR">NSR</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
                 <select
                   name="priority"
@@ -821,26 +830,60 @@ export default function EditCase() {
                   Case has petition
                 </label>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Diary Number</label>
-                <input
-                  type="text"
-                  name="diaryNo"
-                  value={formData.diaryNo}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                  placeholder="Enter diary number"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Diary Date</label>
-                <input
-                  type="date"
-                  name="diaryDate"
-                  value={formData.diaryDate}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                />
+              {/* Diary Entries */}
+              <div className="col-span-full">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-700">Diary Entries</label>
+                  <button
+                    type="button"
+                    onClick={addDiaryEntry}
+                    className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Diary Entry
+                  </button>
+                </div>
+                {formData.diary.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-2">No diary entries. Click "Add Diary Entry" to add one.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {formData.diary.map((entry, index) => (
+                      <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Diary Number</label>
+                          <input
+                            type="text"
+                            value={entry.diaryNo}
+                            onChange={(e) => updateDiaryEntry(index, "diaryNo", e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                            placeholder="Enter diary number"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Diary Date</label>
+                          <input
+                            type="date"
+                            value={entry.diaryDate}
+                            onChange={(e) => updateDiaryEntry(index, "diaryDate", e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                          />
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => removeDiaryEntry(index)}
+                            className="w-full px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg border border-red-200 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1139,229 +1182,6 @@ export default function EditCase() {
             )}
           </div>
 
-          {/* Case-Level Legal Processes */}
-          <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-              Case-Level Legal Processes
-            </h3>
-
-            <div className="space-y-6">
-              {/* Case-Level Notice 41A */}
-              <div className="bg-white rounded-lg p-4 border border-slate-200">
-                <h4 className="text-xs font-semibold text-slate-700 mb-3">Notice 41A (Case-Level)</h4>
-                <div className="space-y-3">
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.notice41A.issued}
-                      onChange={(e) => updateCaseNotice41A("issued", e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    Notice 41A Issued
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Notice 1 Date</label>
-                      <input
-                        type="date"
-                        value={formData.notice41A.notice1Date}
-                        onChange={(e) => updateCaseNotice41A("notice1Date", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Notice 2 Date</label>
-                      <input
-                        type="date"
-                        value={formData.notice41A.notice2Date}
-                        onChange={(e) => updateCaseNotice41A("notice2Date", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Notice 3 Date</label>
-                      <input
-                        type="date"
-                        value={formData.notice41A.notice3Date}
-                        onChange={(e) => updateCaseNotice41A("notice3Date", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Case-Level Warrant */}
-              <div className="bg-white rounded-lg p-4 border border-slate-200">
-                <h4 className="text-xs font-semibold text-slate-700 mb-3">Warrant (Case-Level)</h4>
-                <div className="space-y-3">
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.warrant.prayed}
-                      onChange={(e) => updateCaseLegalProcess("warrant", "prayed", e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    Warrant Prayed
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Prayer Date</label>
-                      <input
-                        type="date"
-                        value={formData.warrant.prayerDate}
-                        onChange={(e) => updateCaseLegalProcess("warrant", "prayerDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Receipt Date</label>
-                      <input
-                        type="date"
-                        value={formData.warrant.receiptDate}
-                        onChange={(e) => updateCaseLegalProcess("warrant", "receiptDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Execution Date</label>
-                      <input
-                        type="date"
-                        value={formData.warrant.executionDate}
-                        onChange={(e) => updateCaseLegalProcess("warrant", "executionDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Return Date</label>
-                      <input
-                        type="date"
-                        value={formData.warrant.returnDate}
-                        onChange={(e) => updateCaseLegalProcess("warrant", "returnDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Case-Level Proclamation */}
-              <div className="bg-white rounded-lg p-4 border border-slate-200">
-                <h4 className="text-xs font-semibold text-slate-700 mb-3">Proclamation (Case-Level)</h4>
-                <div className="space-y-3">
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.proclamation.prayed}
-                      onChange={(e) => updateCaseLegalProcess("proclamation", "prayed", e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    Proclamation Prayed
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Prayer Date</label>
-                      <input
-                        type="date"
-                        value={formData.proclamation.prayerDate}
-                        onChange={(e) => updateCaseLegalProcess("proclamation", "prayerDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Receipt Date</label>
-                      <input
-                        type="date"
-                        value={formData.proclamation.receiptDate}
-                        onChange={(e) => updateCaseLegalProcess("proclamation", "receiptDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Execution Date</label>
-                      <input
-                        type="date"
-                        value={formData.proclamation.executionDate}
-                        onChange={(e) => updateCaseLegalProcess("proclamation", "executionDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Return Date</label>
-                      <input
-                        type="date"
-                        value={formData.proclamation.returnDate}
-                        onChange={(e) => updateCaseLegalProcess("proclamation", "returnDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Case-Level Attachment */}
-              <div className="bg-white rounded-lg p-4 border border-slate-200">
-                <h4 className="text-xs font-semibold text-slate-700 mb-3">Attachment (Case-Level)</h4>
-                <div className="space-y-3">
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.attachment.prayed}
-                      onChange={(e) => updateCaseLegalProcess("attachment", "prayed", e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    Attachment Prayed
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Prayer Date</label>
-                      <input
-                        type="date"
-                        value={formData.attachment.prayerDate}
-                        onChange={(e) => updateCaseLegalProcess("attachment", "prayerDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Receipt Date</label>
-                      <input
-                        type="date"
-                        value={formData.attachment.receiptDate}
-                        onChange={(e) => updateCaseLegalProcess("attachment", "receiptDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Execution Date</label>
-                      <input
-                        type="date"
-                        value={formData.attachment.executionDate}
-                        onChange={(e) => updateCaseLegalProcess("attachment", "executionDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-700 mb-1">Return Date</label>
-                      <input
-                        type="date"
-                        value={formData.attachment.returnDate}
-                        onChange={(e) => updateCaseLegalProcess("attachment", "returnDate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Reports Section */}
           <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
             <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
@@ -1491,25 +1311,14 @@ export default function EditCase() {
                   />
                   Charge Sheet Submitted
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Submission Date</label>
-                    <input
-                      type="date"
-                      value={formData.chargeSheet.submissionDate}
-                      onChange={(e) => updateChargeSheet("submissionDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Receipt Date</label>
-                    <input
-                      type="date"
-                      value={formData.chargeSheet.receiptDate}
-                      onChange={(e) => updateChargeSheet("receiptDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Submission Date</label>
+                  <input
+                    type="date"
+                    value={formData.chargeSheet.submissionDate}
+                    onChange={(e) => updateChargeSheet("submissionDate", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
                 </div>
               </div>
               <div className="pt-3 border-t border-slate-200 space-y-3">
@@ -1539,139 +1348,203 @@ export default function EditCase() {
 
           {/* Prosecution Sanction Section */}
           <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 12l2 2 4-4" />
-                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3" />
-                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3" />
-              </svg>
-              Prosecution Sanction
-            </h3>
-            <div className="bg-white rounded-lg p-4 border border-slate-200">
-              <div className="space-y-3">
-                <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.prosecutionSanction.required}
-                    onChange={(e) => updateProsecutionSanction("required", e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Prosecution Sanction Required
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Submission Date</label>
-                    <input
-                      type="date"
-                      value={formData.prosecutionSanction.submissionDate}
-                      onChange={(e) => updateProsecutionSanction("submissionDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Receipt Date</label>
-                    <input
-                      type="date"
-                      value={formData.prosecutionSanction.receiptDate}
-                      onChange={(e) => updateProsecutionSanction("receiptDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 12l2 2 4-4" />
+                  <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3" />
+                  <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3" />
+                </svg>
+                Prosecution Sanction
+              </h3>
+              <button
+                type="button"
+                onClick={addProsecutionSanction}
+                className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Prosecution Sanction
+              </button>
             </div>
+            {formData.prosecutionSanction.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">No prosecution sanctions added. Click "Add Prosecution Sanction" to add one.</p>
+            ) : (
+              <div className="space-y-4">
+                {formData.prosecutionSanction.map((sanction, index) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-slate-200">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="text-xs font-medium text-slate-700">Prosecution Sanction {index + 1}</h4>
+                      <button
+                        type="button"
+                        onClick={() => removeProsecutionSanction(index)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Type *</label>
+                        <input
+                          type="text"
+                          value={sanction.type}
+                          onChange={(e) => updateProsecutionSanction(index, "type", e.target.value)}
+                          required
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          placeholder="Enter sanction type"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Submission Date</label>
+                        <input
+                          type="date"
+                          value={sanction.submissionDate}
+                          onChange={(e) => updateProsecutionSanction(index, "submissionDate", e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Receipt Date</label>
+                        <input
+                          type="date"
+                          value={sanction.receiptDate}
+                          onChange={(e) => updateProsecutionSanction(index, "receiptDate", e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* FSL/Forensic Section */}
           <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
-              FSL/Forensic
-            </h3>
-            <div className="bg-white rounded-lg p-4 border border-slate-200 space-y-4">
-              <div className="space-y-3">
-                <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.fsl.reportRequired}
-                    onChange={(e) => updateFSL("reportRequired", e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Report Required
-                </label>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Sample To Be Collected</label>
-                  <input
-                    type="text"
-                    value={formData.fsl.sampleToBeCollected}
-                    onChange={(e) => updateFSL("sampleToBeCollected", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    placeholder="Enter sample type"
-                  />
-                </div>
-                <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.fsl.sampleCollected}
-                    onChange={(e) => updateFSL("sampleCollected", e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Sample Collected
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Sample Collection Date</label>
-                    <input
-                      type="date"
-                      value={formData.fsl.sampleCollectionDate}
-                      onChange={(e) => updateFSL("sampleCollectionDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Sample Sending Date</label>
-                    <input
-                      type="date"
-                      value={formData.fsl.sampleSendingDate}
-                      onChange={(e) => updateFSL("sampleSendingDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
-                    <input
-                      type="date"
-                      value={formData.fsl.reportDate}
-                      onChange={(e) => updateFSL("reportDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.fsl.reportReceived}
-                      onChange={(e) => updateFSL("reportReceived", e.target.checked)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    Report Received
-                  </label>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Report Received Date</label>
-                    <input
-                      type="date"
-                      value={formData.fsl.reportReceivedDate}
-                      onChange={(e) => updateFSL("reportReceivedDate", e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+                FSL/Forensic
+              </h3>
+              <button
+                type="button"
+                onClick={addFSL}
+                className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add FSL Report
+              </button>
             </div>
+            {formData.fsl.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">No FSL reports added. Click "Add FSL Report" to add one.</p>
+            ) : (
+              <div className="space-y-4">
+                {formData.fsl.map((fslEntry, index) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-slate-200">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="text-xs font-medium text-slate-700">FSL Report {index + 1}</h4>
+                      <button
+                        type="button"
+                        onClick={() => removeFSL(index)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={fslEntry.reportRequired}
+                            onChange={(e) => updateFSL(index, "reportRequired", e.target.checked)}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          Report Required
+                        </label>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Sample To Be Collected</label>
+                          <input
+                            type="text"
+                            value={fslEntry.sampleToBeCollected}
+                            onChange={(e) => updateFSL(index, "sampleToBeCollected", e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            placeholder="Enter sample type"
+                          />
+                        </div>
+                        <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={fslEntry.sampleCollected}
+                            onChange={(e) => updateFSL(index, "sampleCollected", e.target.checked)}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          Sample Collected
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Sample Collection Date</label>
+                            <input
+                              type="date"
+                              value={fslEntry.sampleCollectionDate}
+                              onChange={(e) => updateFSL(index, "sampleCollectionDate", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Sample Sending Date</label>
+                            <input
+                              type="date"
+                              value={fslEntry.sampleSendingDate}
+                              onChange={(e) => updateFSL(index, "sampleSendingDate", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
+                            <input
+                              type="date"
+                              value={fslEntry.reportDate}
+                              onChange={(e) => updateFSL(index, "reportDate", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={fslEntry.reportReceived}
+                              onChange={(e) => updateFSL(index, "reportReceived", e.target.checked)}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Report Received
+                          </label>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Report Received Date</label>
+                            <input
+                              type="date"
+                              value={fslEntry.reportReceivedDate}
+                              onChange={(e) => updateFSL(index, "reportReceivedDate", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Injury Report Section */}

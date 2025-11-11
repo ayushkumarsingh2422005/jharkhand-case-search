@@ -14,29 +14,6 @@ type Accused = {
   arrestedDate?: string;
 };
 
-type WarrantInfo = {
-  prayed: boolean;
-  prayerDate?: string;
-  receiptDate?: string;
-  executionDate?: string;
-  returnDate?: string;
-};
-
-type ProclamationInfo = {
-  prayed: boolean;
-  prayerDate?: string;
-  receiptDate?: string;
-  executionDate?: string;
-  returnDate?: string;
-};
-
-type AttachmentInfo = {
-  prayed: boolean;
-  prayerDate?: string;
-  receiptDate?: string;
-  executionDate?: string;
-  returnDate?: string;
-};
 
 type ReportInfo = {
   r1?: string;
@@ -62,9 +39,6 @@ type CaseRow = {
   investigationStatus?: InvestigationStatus;
   priority?: Priority;
   isPropertyProfessionalCrime?: boolean;
-  warrant?: WarrantInfo;
-  proclamation?: ProclamationInfo;
-  attachment?: AttachmentInfo;
   reports?: ReportInfo;
   finalChargesheetSubmitted?: boolean;
   finalChargesheetSubmissionDate?: string;
@@ -107,6 +81,20 @@ export default function Home() {
   const [reasonForPendencyOptions, setReasonForPendencyOptions] = useState<string[]>(REASON_FOR_PENDENCY_OPTIONS);
   const [newReasonInput, setNewReasonInput] = useState("");
   const [showAddReasonModal, setShowAddReasonModal] = useState(false);
+  
+  // Collapsible filter sections state
+  const [expandedSections, setExpandedSections] = useState({
+    accused: false,
+    dates: false,
+    reports: false,
+  });
+  
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
 
   const [filters, setFilters] = useState({
     // Basic filters
@@ -140,34 +128,6 @@ export default function Home() {
     caseDateTo: "",
     arrestDateFrom: "",
     arrestDateTo: "",
-    // Warrant filters
-    warrantPrayed: "" as "" | "Yes" | "No" | "NA",
-    warrantPrayerDateFrom: "",
-    warrantPrayerDateTo: "",
-    warrantReceiptDateFrom: "",
-    warrantReceiptDateTo: "",
-    warrantExecutionDateFrom: "",
-    warrantExecutionDateTo: "",
-    warrantReceivedNotExecuted: false,
-    warrantIssuedMonthsAgo: "" as "" | "2" | "3" | "4",
-    // Proclamation filters
-    proclamationPrayed: "" as "" | "Yes" | "No" | "NA",
-    proclamationPrayerDateFrom: "",
-    proclamationPrayerDateTo: "",
-    proclamationReceiptDateFrom: "",
-    proclamationReceiptDateTo: "",
-    proclamationExecutionDateFrom: "",
-    proclamationExecutionDateTo: "",
-    proclamationReceivedNotExecuted: false,
-    proclamationIssuedMonthsAgo: "" as "" | "2" | "3" | "4",
-    // Attachment filters
-    attachmentPrayed: "" as "" | "Yes" | "No" | "NA",
-    attachmentPrayerDateFrom: "",
-    attachmentPrayerDateTo: "",
-    attachmentReceiptDateFrom: "",
-    attachmentReceiptDateTo: "",
-    attachmentReceivedNotExecuted: false,
-    attachmentIssuedMonthsAgo: "" as "" | "2" | "3" | "4",
     // Report filters
     reportR1: "" as "" | "Yes" | "No",
     reportR1DateFrom: "",
@@ -241,9 +201,6 @@ export default function Home() {
           investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
           priority: item.priority as Priority | undefined,
           isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
-          warrant: item.warrant,
-          proclamation: item.proclamation,
-          attachment: item.attachment,
           reports: item.reports,
           finalChargesheetSubmitted: item.finalChargesheetSubmitted || false,
           finalChargesheetSubmissionDate: item.finalChargesheetSubmissionDate,
@@ -271,19 +228,6 @@ export default function Home() {
         { name: "Rakesh Kumar", status: "Arrested", arrestedDate: "2023-01-15" },
         { name: "Suman Verma", status: "Arrested", arrestedDate: "2023-01-20" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2023-01-25",
-        receiptDate: "2023-01-26",
-        executionDate: "2023-02-01",
-        returnDate: "2023-02-05",
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2023-01-12",
         supervision: "2023-02-01",
@@ -315,23 +259,6 @@ export default function Home() {
         { name: "Rajesh Patel", status: "Not arrested" },
         { name: "Deepak Yadav", status: "Decision pending" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-03-05",
-        receiptDate: "2024-03-06",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2024-03-10",
-        receiptDate: "2024-03-12",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-02-12",
         supervision: "2024-03-01",
@@ -354,15 +281,6 @@ export default function Home() {
       accused: [
         { name: "Vikram Singh", status: "Decision pending" },
       ],
-      warrant: {
-        prayed: false,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: undefined,
         supervision: undefined,
@@ -387,27 +305,6 @@ export default function Home() {
         { name: "Mohit Agarwal", status: "Arrested", arrestedDate: "2024-01-15" },
         { name: "Suresh Kumar", status: "Not arrested" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-01-20",
-        receiptDate: "2024-01-22",
-        executionDate: "2024-02-01",
-        returnDate: "2024-02-05",
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2024-02-10",
-        receiptDate: "2024-02-12",
-        executionDate: "2024-02-20",
-        returnDate: "2024-02-25",
-      },
-      attachment: {
-        prayed: true,
-        prayerDate: "2024-03-01",
-        receiptDate: "2024-03-03",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
       reports: {
         r1: "2024-01-12",
         supervision: "2024-01-25",
@@ -438,15 +335,6 @@ export default function Home() {
         { name: "Kiran Desai", status: "Arrested", arrestedDate: "2024-05-12" },
         { name: "Anil Patel", status: "Not arrested" },
       ],
-      warrant: {
-        prayed: false,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-05-08",
         supervision: "2024-05-20",
@@ -474,19 +362,6 @@ export default function Home() {
         { name: "Rajesh Gupta", status: "Arrested", arrestedDate: "2024-08-01" },
         { name: "Meera Gupta", status: "Not arrested" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-08-15",
-        receiptDate: "2024-08-16",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-07-28",
         supervision: "2024-08-10",
@@ -512,27 +387,6 @@ export default function Home() {
         { name: "Sunil Yadav", status: "Arrested", arrestedDate: "2023-06-10" },
         { name: "Pankaj Singh", status: "Arrested", arrestedDate: "2023-06-12" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2023-06-20",
-        receiptDate: "2023-06-21",
-        executionDate: "2023-07-01",
-        returnDate: "2023-07-05",
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2023-07-10",
-        receiptDate: "2023-07-12",
-        executionDate: "2023-07-20",
-        returnDate: "2023-07-25",
-      },
-      attachment: {
-        prayed: true,
-        prayerDate: "2023-08-01",
-        receiptDate: "2023-08-03",
-        executionDate: "2023-08-10",
-        returnDate: "2023-08-15",
-      },
       reports: {
         r1: "2023-06-08",
         supervision: "2023-06-25",
@@ -561,15 +415,6 @@ export default function Home() {
         { name: "Vishal Sharma", status: "Decision pending" },
         { name: "Rohit Verma", status: "Decision pending" },
       ],
-      warrant: {
-        prayed: false,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-10-01",
         supervision: "2024-10-15",
@@ -597,23 +442,6 @@ export default function Home() {
         { name: "Amit Kumar", status: "Not arrested" },
         { name: "Sandeep Singh", status: "Not arrested" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-11-01",
-        receiptDate: "2024-11-02",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2024-11-10",
-        receiptDate: "2024-11-12",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-10-28",
         supervision: "2024-11-05",
@@ -640,27 +468,6 @@ export default function Home() {
         { name: "Vijay Patel", status: "Arrested", arrestedDate: "2023-04-15" },
         { name: "Sanjay Verma", status: "Not arrested" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2023-04-20",
-        receiptDate: "2023-04-21",
-        executionDate: "2023-05-01",
-        returnDate: "2023-05-05",
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2023-05-10",
-        receiptDate: "2023-05-12",
-        executionDate: "2023-05-20",
-        returnDate: "2023-05-25",
-      },
-      attachment: {
-        prayed: true,
-        prayerDate: "2023-06-01",
-        receiptDate: "2023-06-03",
-        executionDate: "2023-06-10",
-        returnDate: "2023-06-15",
-      },
       reports: {
         r1: "2023-04-08",
         supervision: "2023-04-25",
@@ -691,19 +498,6 @@ export default function Home() {
         { name: "Arjun Kapoor", status: "Not arrested" },
         { name: "Rahul Jain", status: "Decision pending" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-07-20",
-        receiptDate: "2024-07-21",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-07-03",
         supervision: "2024-07-15",
@@ -728,15 +522,6 @@ export default function Home() {
       accused: [
         { name: "Neeraj Sharma", status: "Arrested", arrestedDate: "2023-09-10" },
       ],
-      warrant: {
-        prayed: false,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2023-09-08",
         supervision: "2023-09-20",
@@ -767,27 +552,6 @@ export default function Home() {
         { name: "Manoj Singh", status: "Not arrested" },
         { name: "Dinesh Patel", status: "Decision pending" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-12-01",
-        receiptDate: "2024-12-02",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2024-12-10",
-        receiptDate: "2024-12-12",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      attachment: {
-        prayed: true,
-        prayerDate: "2024-12-20",
-        receiptDate: "2024-12-22",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
       reports: {
         r1: "2024-11-28",
         supervision: "2024-12-05",
@@ -815,23 +579,6 @@ export default function Home() {
         { name: "Nitin Sharma", status: "Arrested", arrestedDate: "2024-09-15" },
         { name: "Ravi Kumar", status: "Not arrested" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-10-15",
-        receiptDate: "2024-10-16",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2024-10-20",
-        receiptDate: "2024-10-22",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-09-12",
         supervision: "2024-09-25",
@@ -858,19 +605,6 @@ export default function Home() {
         { name: "Sahil Mehta", status: "Arrested", arrestedDate: "2024-08-20" },
         { name: "Varun Patel", status: "Not arrested" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-09-20",
-        receiptDate: "2024-09-21",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-08-18",
         supervision: "2024-08-30",
@@ -895,27 +629,6 @@ export default function Home() {
       accused: [
         { name: "Akhil Verma", status: "Arrested", arrestedDate: "2024-07-25" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2024-08-25",
-        receiptDate: "2024-08-26",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      proclamation: {
-        prayed: true,
-        prayerDate: "2024-08-30",
-        receiptDate: "2024-09-01",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
-      attachment: {
-        prayed: true,
-        prayerDate: "2024-09-05",
-        receiptDate: "2024-09-06",
-        executionDate: undefined,
-        returnDate: undefined,
-      },
       reports: {
         r1: "2024-07-23",
         supervision: "2024-08-05",
@@ -942,15 +655,6 @@ export default function Home() {
         { name: "Yash Kumar", status: "Not arrested" },
         { name: "Kunal Singh", status: "Decision pending" },
       ],
-      warrant: {
-        prayed: false,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-11-10",
         supervision: "2024-11-20",
@@ -976,15 +680,6 @@ export default function Home() {
       accused: [
         { name: "Tarun Agarwal", status: "Decision pending" },
       ],
-      warrant: {
-        prayed: false,
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2024-12-01",
         supervision: "2024-12-10",
@@ -1011,19 +706,6 @@ export default function Home() {
         { name: "Abhishek Gupta", status: "Arrested", arrestedDate: "2023-11-05" },
         { name: "Rohit Yadav", status: "Arrested", arrestedDate: "2023-11-07" },
       ],
-      warrant: {
-        prayed: true,
-        prayerDate: "2023-11-15",
-        receiptDate: "2023-11-16",
-        executionDate: "2023-11-25",
-        returnDate: "2023-11-30",
-      },
-      proclamation: {
-        prayed: false,
-      },
-      attachment: {
-        prayed: false,
-      },
       reports: {
         r1: "2023-11-03",
         supervision: "2023-11-15",
@@ -1125,86 +807,6 @@ export default function Home() {
             return true;
           });
           if (!hasArrestedWithDate) return null;
-        }
-
-        // Warrant filters
-        if (filters.warrantPrayed) {
-          if (filters.warrantPrayed === "Yes" && (!row.warrant || !row.warrant.prayed)) return null;
-          if (filters.warrantPrayed === "No" && row.warrant && row.warrant.prayed) return null;
-          if (filters.warrantPrayed === "NA" && row.warrant && row.warrant.prayed) return null;
-        }
-        if (filters.warrantPrayerDateFrom && (!row.warrant?.prayerDate || new Date(row.warrant.prayerDate) < new Date(filters.warrantPrayerDateFrom))) return null;
-        if (filters.warrantPrayerDateTo && (!row.warrant?.prayerDate || new Date(row.warrant.prayerDate) > new Date(filters.warrantPrayerDateTo))) return null;
-        if (filters.warrantReceiptDateFrom && (!row.warrant?.receiptDate || new Date(row.warrant.receiptDate) < new Date(filters.warrantReceiptDateFrom))) return null;
-        if (filters.warrantReceiptDateTo && (!row.warrant?.receiptDate || new Date(row.warrant.receiptDate) > new Date(filters.warrantReceiptDateTo))) return null;
-        if (filters.warrantExecutionDateFrom && (!row.warrant?.executionDate || new Date(row.warrant.executionDate) < new Date(filters.warrantExecutionDateFrom))) return null;
-        if (filters.warrantExecutionDateTo && (!row.warrant?.executionDate || new Date(row.warrant.executionDate) > new Date(filters.warrantExecutionDateTo))) return null;
-        // Warrant received but not executed
-        if (filters.warrantReceivedNotExecuted) {
-          if (!row.warrant?.receiptDate || row.warrant?.executionDate) return null;
-        }
-        // Warrant issued X months ago
-        if (filters.warrantIssuedMonthsAgo) {
-          if (!row.warrant?.prayerDate) return null;
-          const monthsAgo = Number(filters.warrantIssuedMonthsAgo);
-          const prayerDate = new Date(row.warrant.prayerDate);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - prayerDate.getFullYear()) * 12 + (today.getMonth() - prayerDate.getMonth());
-          if (diffMonths < monthsAgo - 1 || diffMonths > monthsAgo + 1) return null;
-        }
-        // Cases with >=7 yrs punishment where warrant prayed or not
-        if (filters.punishment.includes(">7")) {
-          // This filter is handled by punishment filter above
-        }
-
-        // Proclamation filters
-        if (filters.proclamationPrayed) {
-          if (filters.proclamationPrayed === "Yes" && (!row.proclamation || !row.proclamation.prayed)) return null;
-          if (filters.proclamationPrayed === "No" && row.proclamation && row.proclamation.prayed) return null;
-          if (filters.proclamationPrayed === "NA" && row.proclamation && row.proclamation.prayed) return null;
-        }
-        if (filters.proclamationPrayerDateFrom && (!row.proclamation?.prayerDate || new Date(row.proclamation.prayerDate) < new Date(filters.proclamationPrayerDateFrom))) return null;
-        if (filters.proclamationPrayerDateTo && (!row.proclamation?.prayerDate || new Date(row.proclamation.prayerDate) > new Date(filters.proclamationPrayerDateTo))) return null;
-        if (filters.proclamationReceiptDateFrom && (!row.proclamation?.receiptDate || new Date(row.proclamation.receiptDate) < new Date(filters.proclamationReceiptDateFrom))) return null;
-        if (filters.proclamationReceiptDateTo && (!row.proclamation?.receiptDate || new Date(row.proclamation.receiptDate) > new Date(filters.proclamationReceiptDateTo))) return null;
-        if (filters.proclamationExecutionDateFrom && (!row.proclamation?.executionDate || new Date(row.proclamation.executionDate) < new Date(filters.proclamationExecutionDateFrom))) return null;
-        if (filters.proclamationExecutionDateTo && (!row.proclamation?.executionDate || new Date(row.proclamation.executionDate) > new Date(filters.proclamationExecutionDateTo))) return null;
-        // Proclamation received but not executed
-        if (filters.proclamationReceivedNotExecuted) {
-          if (!row.proclamation?.receiptDate || row.proclamation?.executionDate) return null;
-        }
-        // Proclamation issued X months ago
-        if (filters.proclamationIssuedMonthsAgo) {
-          if (!row.proclamation?.prayerDate) return null;
-          const monthsAgo = Number(filters.proclamationIssuedMonthsAgo);
-          const prayerDate = new Date(row.proclamation.prayerDate);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - prayerDate.getFullYear()) * 12 + (today.getMonth() - prayerDate.getMonth());
-          if (diffMonths < monthsAgo - 1 || diffMonths > monthsAgo + 1) return null;
-        }
-
-        // Attachment filters
-        if (filters.attachmentPrayed) {
-          if (filters.attachmentPrayed === "Yes" && (!row.attachment || !row.attachment.prayed)) return null;
-          if (filters.attachmentPrayed === "No" && row.attachment && row.attachment.prayed) return null;
-          if (filters.attachmentPrayed === "NA" && row.attachment && row.attachment.prayed) return null;
-        }
-        if (filters.attachmentPrayerDateFrom && (!row.attachment?.prayerDate || new Date(row.attachment.prayerDate) < new Date(filters.attachmentPrayerDateFrom))) return null;
-        if (filters.attachmentPrayerDateTo && (!row.attachment?.prayerDate || new Date(row.attachment.prayerDate) > new Date(filters.attachmentPrayerDateTo))) return null;
-        if (filters.attachmentReceiptDateFrom && (!row.attachment?.receiptDate || new Date(row.attachment.receiptDate) < new Date(filters.attachmentReceiptDateFrom))) return null;
-        if (filters.attachmentReceiptDateTo && (!row.attachment?.receiptDate || new Date(row.attachment.receiptDate) > new Date(filters.attachmentReceiptDateTo))) return null;
-        // Attachment received but not executed
-        if (filters.attachmentReceivedNotExecuted) {
-          if (!row.attachment?.receiptDate || row.attachment?.executionDate) return null;
-        }
-        // Attachment issued X months ago
-        if (filters.attachmentIssuedMonthsAgo) {
-          if (!row.attachment?.prayerDate) return null;
-          const monthsAgo = Number(filters.attachmentIssuedMonthsAgo);
-          const prayerDate = new Date(row.attachment.prayerDate);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - prayerDate.getFullYear()) * 12 + (today.getMonth() - prayerDate.getMonth());
-          if (diffMonths < monthsAgo - 1 || diffMonths > monthsAgo + 1) return null;
         }
 
         // Report filters
@@ -1408,31 +1010,6 @@ export default function Home() {
       caseDateTo: "",
       arrestDateFrom: "",
       arrestDateTo: "",
-      warrantPrayed: "",
-      warrantPrayerDateFrom: "",
-      warrantPrayerDateTo: "",
-      warrantReceiptDateFrom: "",
-      warrantReceiptDateTo: "",
-      warrantExecutionDateFrom: "",
-      warrantExecutionDateTo: "",
-      warrantReceivedNotExecuted: false,
-      warrantIssuedMonthsAgo: "",
-      proclamationPrayed: "",
-      proclamationPrayerDateFrom: "",
-      proclamationPrayerDateTo: "",
-      proclamationReceiptDateFrom: "",
-      proclamationReceiptDateTo: "",
-      proclamationExecutionDateFrom: "",
-      proclamationExecutionDateTo: "",
-      proclamationReceivedNotExecuted: false,
-      proclamationIssuedMonthsAgo: "",
-      attachmentPrayed: "",
-      attachmentPrayerDateFrom: "",
-      attachmentPrayerDateTo: "",
-      attachmentReceiptDateFrom: "",
-      attachmentReceiptDateTo: "",
-      attachmentReceivedNotExecuted: false,
-      attachmentIssuedMonthsAgo: "",
       reportR1: "",
       reportR1DateFrom: "",
       reportR1DateTo: "",
@@ -1829,17 +1406,34 @@ export default function Home() {
             </div>
 
             {/* Accused Filters */}
-            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleSection('accused')}
+                className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
+              >
+                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  Accused Information
+                </h3>
+                <svg 
+                  className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.accused ? 'rotate-180' : ''}`}
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                >
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
-                Accused Information
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              </button>
+              {expandedSections.accused && (
+                <div className="px-5 pb-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Name</label>
                   <input value={filters.accusedName} onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter name" />
@@ -1892,7 +1486,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-              </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Advanced Filters Toggle */}
@@ -1921,17 +1517,34 @@ export default function Home() {
             {showAdvancedFilters && (
               <div className="space-y-6">
                 {/* Date Filters */}
-                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
+                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('dates')}
+                    className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                  >
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                      Date Filters
+                    </h3>
+                    <svg 
+                      className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.dates ? 'rotate-180' : ''}`}
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2"
+                    >
+                      <polyline points="6 9 12 15 18 9" />
                     </svg>
-                    Date Filters
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  </button>
+                  {expandedSections.dates && (
+                    <div className="px-5 pb-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date From</label>
                       <input type="date" value={filters.caseDateFrom} onChange={(e) => setFilters({ ...filters, caseDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
@@ -1950,210 +1563,39 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-
-                {/* Warrant Filters */}
-                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-                    </svg>
-                    Warrant Filters
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Prayed</label>
-                      <select value={filters.warrantPrayed} onChange={(e) => setFilters({ ...filters, warrantPrayed: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                        <option value="NA">NA</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Prayer Date From</label>
-                      <input type="date" value={filters.warrantPrayerDateFrom} onChange={(e) => setFilters({ ...filters, warrantPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Prayer Date To</label>
-                      <input type="date" value={filters.warrantPrayerDateTo} onChange={(e) => setFilters({ ...filters, warrantPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Receipt Date From</label>
-                      <input type="date" value={filters.warrantReceiptDateFrom} onChange={(e) => setFilters({ ...filters, warrantReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Receipt Date To</label>
-                      <input type="date" value={filters.warrantReceiptDateTo} onChange={(e) => setFilters({ ...filters, warrantReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Execution Date From</label>
-                      <input type="date" value={filters.warrantExecutionDateFrom} onChange={(e) => setFilters({ ...filters, warrantExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Execution Date To</label>
-                      <input type="date" value={filters.warrantExecutionDateTo} onChange={(e) => setFilters({ ...filters, warrantExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Received but Not Executed</label>
-                      <label className="inline-flex items-center gap-2 text-sm pt-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.warrantReceivedNotExecuted}
-                          onChange={(e) => setFilters({ ...filters, warrantReceivedNotExecuted: e.target.checked })}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        Received but not executed
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Issued (Months Ago)</label>
-                      <select value={filters.warrantIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, warrantIssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="2">2 months ago</option>
-                        <option value="3">3 months ago</option>
-                        <option value="4">4 months ago</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Proclamation Filters */}
-                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-                    </svg>
-                    Proclamation Filters
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Prayed</label>
-                      <select value={filters.proclamationPrayed} onChange={(e) => setFilters({ ...filters, proclamationPrayed: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                        <option value="NA">NA</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Prayer Date From</label>
-                      <input type="date" value={filters.proclamationPrayerDateFrom} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Prayer Date To</label>
-                      <input type="date" value={filters.proclamationPrayerDateTo} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Receipt Date From</label>
-                      <input type="date" value={filters.proclamationReceiptDateFrom} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Receipt Date To</label>
-                      <input type="date" value={filters.proclamationReceiptDateTo} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Execution Date From</label>
-                      <input type="date" value={filters.proclamationExecutionDateFrom} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Execution Date To</label>
-                      <input type="date" value={filters.proclamationExecutionDateTo} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Received but Not Executed</label>
-                      <label className="inline-flex items-center gap-2 text-sm pt-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.proclamationReceivedNotExecuted}
-                          onChange={(e) => setFilters({ ...filters, proclamationReceivedNotExecuted: e.target.checked })}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        Received but not executed
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Issued (Months Ago)</label>
-                      <select value={filters.proclamationIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, proclamationIssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="2">2 months ago</option>
-                        <option value="3">3 months ago</option>
-                        <option value="4">4 months ago</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Attachment Filters */}
-                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-                    </svg>
-                    Attachment Filters
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Prayed</label>
-                      <select value={filters.attachmentPrayed} onChange={(e) => setFilters({ ...filters, attachmentPrayed: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                        <option value="NA">NA</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Prayer Date From</label>
-                      <input type="date" value={filters.attachmentPrayerDateFrom} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Prayer Date To</label>
-                      <input type="date" value={filters.attachmentPrayerDateTo} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Receipt Date From</label>
-                      <input type="date" value={filters.attachmentReceiptDateFrom} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Receipt Date To</label>
-                      <input type="date" value={filters.attachmentReceiptDateTo} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Received but Not Executed</label>
-                      <label className="inline-flex items-center gap-2 text-sm pt-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.attachmentReceivedNotExecuted}
-                          onChange={(e) => setFilters({ ...filters, attachmentReceivedNotExecuted: e.target.checked })}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        Received but not executed
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Issued (Months Ago)</label>
-                      <select value={filters.attachmentIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, attachmentIssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="2">2 months ago</option>
-                        <option value="3">3 months ago</option>
-                        <option value="4">4 months ago</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+              )}
+            </div>
 
                 {/* Report Filters */}
-                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
+                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('reports')}
+                    className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                  >
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                      Report Filters
+                    </h3>
+                    <svg 
+                      className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.reports ? 'rotate-180' : ''}`}
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2"
+                    >
+                      <polyline points="6 9 12 15 18 9" />
                     </svg>
-                    Report Filters
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {/* R1 Report */}
+                  </button>
+                  {expandedSections.reports && (
+                    <div className="px-5 pb-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {/* R1 Report */}
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Report</label>
                       <select value={filters.reportR1} onChange={(e) => setFilters({ ...filters, reportR1: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
@@ -2433,9 +1875,11 @@ export default function Home() {
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">Submission Date To</label>
                       <input type="date" value={filters.finalChargesheetSubmissionDateTo} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmissionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
                     </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
+            </div>
             )}
 
             {/* Actions */}

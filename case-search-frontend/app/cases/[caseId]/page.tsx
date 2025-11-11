@@ -2,11 +2,13 @@
 import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { generateCasePDF } from "@/lib/generateCasePDF";
 
 type AccusedStatus = "True" | "False" | "Decision Pending" | "Arrested" | "Not Arrested";
 type CaseStatus = "Disposed" | "Under investigation" | "Decision Pending";
 type InvestigationStatus = "Detected" | "Undetected";
 type Priority = "Under monitoring" | "Normal";
+type SrNsr = "SR" | "NSR";
 
 type AccusedInfo = {
   name: string;
@@ -26,6 +28,13 @@ type AccusedInfo = {
     returnDate?: string;
   };
   proclamation?: {
+    prayed: boolean;
+    prayerDate?: string;
+    receiptDate?: string;
+    executionDate?: string;
+    returnDate?: string;
+  };
+  attachment?: {
     prayed: boolean;
     prayerDate?: string;
     receiptDate?: string;
@@ -100,6 +109,7 @@ export default function CaseDetail() {
         totalAccused: 0,
         caseStatus: "Under investigation" as CaseStatus,
         investigationStatus: undefined as InvestigationStatus | undefined,
+        srNsr: undefined as SrNsr | undefined,
         priority: "Normal" as Priority,
         isPropertyProfessionalCrime: false,
         petition: false,
@@ -119,6 +129,7 @@ export default function CaseDetail() {
       totalAccused: caseData.accused?.length || 0,
       caseStatus: (caseData.caseStatus || "Under investigation") as CaseStatus,
       investigationStatus: caseData.investigationStatus as InvestigationStatus | undefined,
+      srNsr: (caseData.srNsr as SrNsr | undefined),
       priority: (caseData.priority || "Normal") as Priority,
       isPropertyProfessionalCrime: caseData.isPropertyProfessionalCrime || false,
       petition: caseData.petition || false,
@@ -179,6 +190,129 @@ export default function CaseDetail() {
     });
   };
 
+  const handlePrintPDF = () => {
+    if (!caseData) {
+      setError("Case data not available");
+      return;
+    }
+
+    try {
+      // Prepare case data for PDF generation - transform caseData to match PDF interface
+      const pdfData = {
+        caseNo: caseData.caseNo || caseNo || "",
+        year: caseData.year || new Date().getFullYear(),
+        policeStation: caseData.policeStation || "",
+        crimeHead: caseData.crimeHead || "",
+        crimeSection: caseData.crimeSection || caseData.section || "",
+        punishmentCategory: caseData.punishmentCategory || ">7 yrs",
+        caseDate: caseData.caseDate || "",
+        caseStatus: caseData.caseStatus || "Under investigation",
+        investigationStatus: caseData.investigationStatus || "",
+        srNsr: caseData.srNsr || "",
+        priority: caseData.priority || "Normal",
+        isPropertyProfessionalCrime: caseData.isPropertyProfessionalCrime || false,
+        petition: caseData.petition || false,
+        reasonForPendency: caseData.reasonForPendency || [],
+        diary: (caseData.diary || []).map((entry: any) => ({
+          diaryNo: entry.diaryNo || "",
+          diaryDate: entry.diaryDate ? new Date(entry.diaryDate).toISOString().split('T')[0] : "",
+        })),
+        reports: {
+          r1: caseData.reports?.r1 ? new Date(caseData.reports.r1).toISOString().split('T')[0] : "",
+          supervision: caseData.reports?.supervision ? new Date(caseData.reports.supervision).toISOString().split('T')[0] : "",
+          r2: caseData.reports?.r2 ? new Date(caseData.reports.r2).toISOString().split('T')[0] : "",
+          r3: caseData.reports?.r3 ? new Date(caseData.reports.r3).toISOString().split('T')[0] : "",
+          pr1: caseData.reports?.pr1 ? new Date(caseData.reports.pr1).toISOString().split('T')[0] : "",
+          pr2: caseData.reports?.pr2 ? new Date(caseData.reports.pr2).toISOString().split('T')[0] : "",
+          pr3: caseData.reports?.pr3 ? new Date(caseData.reports.pr3).toISOString().split('T')[0] : "",
+          fpr: caseData.reports?.fpr ? new Date(caseData.reports.fpr).toISOString().split('T')[0] : "",
+          finalOrder: caseData.reports?.finalOrder ? new Date(caseData.reports.finalOrder).toISOString().split('T')[0] : "",
+          finalChargesheet: caseData.reports?.finalChargesheet ? new Date(caseData.reports.finalChargesheet).toISOString().split('T')[0] : "",
+        },
+        chargeSheet: {
+          submitted: caseData.chargeSheet?.submitted || false,
+          submissionDate: caseData.chargeSheet?.submissionDate ? new Date(caseData.chargeSheet.submissionDate).toISOString().split('T')[0] : "",
+        },
+        finalChargesheetSubmitted: caseData.finalChargesheetSubmitted || false,
+        finalChargesheetSubmissionDate: caseData.finalChargesheetSubmissionDate ? new Date(caseData.finalChargesheetSubmissionDate).toISOString().split('T')[0] : "",
+        prosecutionSanction: (caseData.prosecutionSanction || []).map((sanction: any) => ({
+          type: sanction.type || "",
+          submissionDate: sanction.submissionDate ? new Date(sanction.submissionDate).toISOString().split('T')[0] : "",
+          receiptDate: sanction.receiptDate ? new Date(sanction.receiptDate).toISOString().split('T')[0] : "",
+        })),
+        fsl: (caseData.fsl || []).map((fslEntry: any) => ({
+          reportRequired: fslEntry.reportRequired || false,
+          sampleToBeCollected: fslEntry.sampleToBeCollected || "",
+          sampleCollected: fslEntry.sampleCollected || false,
+          sampleCollectionDate: fslEntry.sampleCollectionDate ? new Date(fslEntry.sampleCollectionDate).toISOString().split('T')[0] : "",
+          sampleSendingDate: fslEntry.sampleSendingDate ? new Date(fslEntry.sampleSendingDate).toISOString().split('T')[0] : "",
+          reportReceived: fslEntry.reportReceived || false,
+          reportReceivedDate: fslEntry.reportReceivedDate ? new Date(fslEntry.reportReceivedDate).toISOString().split('T')[0] : "",
+          reportDate: fslEntry.reportDate ? new Date(fslEntry.reportDate).toISOString().split('T')[0] : "",
+        })),
+        injuryReport: {
+          report: caseData.injuryReport?.report || false,
+          injuryDate: caseData.injuryReport?.injuryDate ? new Date(caseData.injuryReport.injuryDate).toISOString().split('T')[0] : "",
+          reportReceived: caseData.injuryReport?.reportReceived || false,
+          reportDate: caseData.injuryReport?.reportDate ? new Date(caseData.injuryReport.reportDate).toISOString().split('T')[0] : "",
+        },
+        pmReport: {
+          report: caseData.pmReport?.report || "",
+          pmDate: caseData.pmReport?.pmDate ? new Date(caseData.pmReport.pmDate).toISOString().split('T')[0] : "",
+          reportReceived: caseData.pmReport?.reportReceived || false,
+          reportDate: caseData.pmReport?.reportDate ? new Date(caseData.pmReport.reportDate).toISOString().split('T')[0] : "",
+        },
+        compensationProposal: {
+          required: caseData.compensationProposal?.required || false,
+          submitted: caseData.compensationProposal?.submitted || false,
+          submissionDate: caseData.compensationProposal?.submissionDate ? new Date(caseData.compensationProposal.submissionDate).toISOString().split('T')[0] : "",
+        },
+        accused: (caseData.accused || []).map((acc: any) => ({
+          name: acc.name || "",
+          status: acc.status || "Decision pending",
+          arrestedDate: acc.arrestedDate ? new Date(acc.arrestedDate).toISOString().split('T')[0] : "",
+          arrestedOn: acc.arrestedOn ? new Date(acc.arrestedOn).toISOString().split('T')[0] : "",
+          notice41A: acc.notice41A ? {
+            issued: acc.notice41A.issued || false,
+            notice1Date: acc.notice41A.notice1Date ? new Date(acc.notice41A.notice1Date).toISOString().split('T')[0] : "",
+            notice2Date: acc.notice41A.notice2Date ? new Date(acc.notice41A.notice2Date).toISOString().split('T')[0] : "",
+            notice3Date: acc.notice41A.notice3Date ? new Date(acc.notice41A.notice3Date).toISOString().split('T')[0] : "",
+          } : undefined,
+          warrant: acc.warrant ? {
+            prayed: acc.warrant.prayed || false,
+            prayerDate: acc.warrant.prayerDate ? new Date(acc.warrant.prayerDate).toISOString().split('T')[0] : "",
+            receiptDate: acc.warrant.receiptDate ? new Date(acc.warrant.receiptDate).toISOString().split('T')[0] : "",
+            executionDate: acc.warrant.executionDate ? new Date(acc.warrant.executionDate).toISOString().split('T')[0] : "",
+            returnDate: acc.warrant.returnDate ? new Date(acc.warrant.returnDate).toISOString().split('T')[0] : "",
+          } : undefined,
+          proclamation: acc.proclamation ? {
+            prayed: acc.proclamation.prayed || false,
+            prayerDate: acc.proclamation.prayerDate ? new Date(acc.proclamation.prayerDate).toISOString().split('T')[0] : "",
+            receiptDate: acc.proclamation.receiptDate ? new Date(acc.proclamation.receiptDate).toISOString().split('T')[0] : "",
+            executionDate: acc.proclamation.executionDate ? new Date(acc.proclamation.executionDate).toISOString().split('T')[0] : "",
+            returnDate: acc.proclamation.returnDate ? new Date(acc.proclamation.returnDate).toISOString().split('T')[0] : "",
+          } : undefined,
+          attachment: acc.attachment ? {
+            prayed: acc.attachment.prayed || false,
+            prayerDate: acc.attachment.prayerDate ? new Date(acc.attachment.prayerDate).toISOString().split('T')[0] : "",
+            receiptDate: acc.attachment.receiptDate ? new Date(acc.attachment.receiptDate).toISOString().split('T')[0] : "",
+            executionDate: acc.attachment.executionDate ? new Date(acc.attachment.executionDate).toISOString().split('T')[0] : "",
+            returnDate: acc.attachment.returnDate ? new Date(acc.attachment.returnDate).toISOString().split('T')[0] : "",
+          } : undefined,
+        })),
+        notes: notes.map((note) => ({
+          content: note.content,
+          author: note.author,
+          createdAt: note.createdAt,
+        })),
+      };
+
+      generateCasePDF(pdfData);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate PDF");
+    }
+  };
+
   const accused: AccusedInfo[] = useMemo(() => {
     if (!caseData?.accused) return [];
     
@@ -205,6 +339,13 @@ export default function CaseDetail() {
         receiptDate: acc.proclamation.receiptDate,
         executionDate: acc.proclamation.executionDate,
         returnDate: acc.proclamation.returnDate,
+      } : undefined,
+      attachment: acc.attachment ? {
+        prayed: acc.attachment.prayed || false,
+        prayerDate: acc.attachment.prayerDate,
+        receiptDate: acc.attachment.receiptDate,
+        executionDate: acc.attachment.executionDate,
+        returnDate: acc.attachment.returnDate,
       } : undefined,
     }));
   }, [caseData]);
@@ -279,12 +420,24 @@ export default function CaseDetail() {
 
       {/* Case Header */}
       <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200 overflow-hidden">
-        <div className="px-4 py-4 md:px-6 md:py-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
+        <div className="px-4 py-4 md:px-6 md:py-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex-1">
             <h1 className="text-lg font-semibold tracking-wide">Case {summary.caseNo}</h1>
             <p className="text-sm text-slate-600">{summary.policeStation} • {summary.section} • {summary.crimeHead}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handlePrintPDF}
+              className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white font-medium shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              Print PDF
+            </button>
             <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
               summary.caseStatus === "Disposed" ? "bg-green-100 text-green-800 ring-green-600/20" :
               summary.caseStatus === "Under investigation" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
@@ -293,6 +446,11 @@ export default function CaseDetail() {
               {summary.caseStatus}
               {summary.investigationStatus && ` (${summary.investigationStatus})`}
             </span>
+            {summary.srNsr && (
+              <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-indigo-50 text-indigo-700 ring-indigo-600/20">
+                {summary.srNsr}
+              </span>
+            )}
             <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-blue-50 text-blue-700 ring-blue-600/20">
               {summary.priority}
             </span>
@@ -345,6 +503,7 @@ export default function CaseDetail() {
                   <li><strong className="font-medium">Section:</strong> {summary.section}</li>
                   <li><strong className="font-medium">Punishment:</strong> {summary.punishmentCategory}</li>
                   <li><strong className="font-medium">Status:</strong> {summary.caseStatus} {summary.investigationStatus && `(${summary.investigationStatus})`}</li>
+                  {summary.srNsr && <li><strong className="font-medium">SR/NSR:</strong> {summary.srNsr}</li>}
                   <li><strong className="font-medium">Priority:</strong> {summary.priority}</li>
                   <li><strong className="font-medium">Property/Professional Crime:</strong> {summary.isPropertyProfessionalCrime ? "Yes" : "No"}</li>
                 </ul>
@@ -424,94 +583,66 @@ export default function CaseDetail() {
                   </tbody>
                 </table>
               </Card>
-
-              {/* Accused-wise information */}
-              {accused.map((acc) => (
-                <Card key={acc.name} title={`${acc.name} - Arrest / Notice / Warrant`}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <SubSection title="41A Notice">
-                      <FieldRow label="Issued" value={acc.notice41A?.issued ? "Yes" : "No"} />
-                      {acc.notice41A?.issued && (
-                        <>
-                          <FieldRow label="Notice 1 - Date" value={acc.notice41A.notice1Date || "—"} />
-                          <FieldRow label="Notice 2 - Date" value={acc.notice41A.notice2Date || "—"} />
-                          <FieldRow label="Notice 3 - Date" value={acc.notice41A.notice3Date || "—"} />
-                        </>
-                      )}
-                    </SubSection>
-                    <SubSection title="Warrant">
-                      <FieldRow label="Prayed" value={acc.warrant?.prayed ? "Yes" : "No"} />
-                      {acc.warrant?.prayed && (
-                        <>
-                          <FieldRow label="Date of Prayer" value={acc.warrant.prayerDate || "—"} />
-                          <FieldRow label="Date of Receipt" value={acc.warrant.receiptDate || "—"} />
-                          <FieldRow label="Date of Execution" value={acc.warrant.executionDate || "—"} />
-                          <FieldRow label="Date of Return" value={acc.warrant.returnDate || "—"} />
-                        </>
-                      )}
-                    </SubSection>
-                    <SubSection title="Proclamation">
-                      <FieldRow label="Prayed" value={acc.proclamation?.prayed ? "Yes" : "No"} />
-                      {acc.proclamation?.prayed && (
-                        <>
-                          <FieldRow label="Date of Prayer" value={acc.proclamation.prayerDate || "—"} />
-                          <FieldRow label="Date of Receipt" value={acc.proclamation.receiptDate || "—"} />
-                          <FieldRow label="Date of Execution" value={acc.proclamation.executionDate || "—"} />
-                          <FieldRow label="Date of Return" value={acc.proclamation.returnDate || "—"} />
-                        </>
-                      )}
-                    </SubSection>
-                  </div>
-                </Card>
-              ))}
             </div>
           )}
 
           {activeTab === "notices" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card title="41A Notice">
-                <FieldRow label="Issued" value={caseData?.notice41A?.issued ? "Yes" : "No"} />
-                {caseData?.notice41A?.issued && (
-                  <>
-                    <FieldRow label="Notice 1 - Date" value={caseData.notice41A.notice1Date ? new Date(caseData.notice41A.notice1Date).toLocaleDateString() : "—"} />
-                    <FieldRow label="Notice 2 - Date" value={caseData.notice41A.notice2Date ? new Date(caseData.notice41A.notice2Date).toLocaleDateString() : "—"} />
-                    <FieldRow label="Notice 3 - Date" value={caseData.notice41A.notice3Date ? new Date(caseData.notice41A.notice3Date).toLocaleDateString() : "—"} />
-                  </>
-                )}
-              </Card>
-              <Card title="Warrant">
-                <FieldRow label="Prayed" value={caseData?.warrant?.prayed ? "Yes" : "No"} />
-                {caseData?.warrant?.prayed && (
-                  <>
-                    <FieldRow label="Date of Prayer" value={caseData.warrant.prayerDate ? new Date(caseData.warrant.prayerDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Receipt" value={caseData.warrant.receiptDate ? new Date(caseData.warrant.receiptDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Execution" value={caseData.warrant.executionDate ? new Date(caseData.warrant.executionDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Return" value={caseData.warrant.returnDate ? new Date(caseData.warrant.returnDate).toLocaleDateString() : "—"} />
-                  </>
-                )}
-              </Card>
-              <Card title="Proclamation">
-                <FieldRow label="Prayed" value={caseData?.proclamation?.prayed ? "Yes" : "No"} />
-                {caseData?.proclamation?.prayed && (
-                  <>
-                    <FieldRow label="Date of Prayer" value={caseData.proclamation.prayerDate ? new Date(caseData.proclamation.prayerDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Receipt" value={caseData.proclamation.receiptDate ? new Date(caseData.proclamation.receiptDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Execution" value={caseData.proclamation.executionDate ? new Date(caseData.proclamation.executionDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Return" value={caseData.proclamation.returnDate ? new Date(caseData.proclamation.returnDate).toLocaleDateString() : "—"} />
-                  </>
-                )}
-              </Card>
-              <Card title="Attachment">
-                <FieldRow label="Prayed" value={caseData?.attachment?.prayed ? "Yes" : "No"} />
-                {caseData?.attachment?.prayed && (
-                  <>
-                    <FieldRow label="Date of Prayer" value={caseData.attachment.prayerDate ? new Date(caseData.attachment.prayerDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Receipt" value={caseData.attachment.receiptDate ? new Date(caseData.attachment.receiptDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Execution" value={caseData.attachment.executionDate ? new Date(caseData.attachment.executionDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Return" value={caseData.attachment.returnDate ? new Date(caseData.attachment.returnDate).toLocaleDateString() : "—"} />
-                  </>
-                )}
-              </Card>
+            <div className="space-y-6">
+              {accused.length === 0 ? (
+                <Card title="Notices & Warrants">
+                  <p className="text-sm text-slate-500">No accused information available.</p>
+                </Card>
+              ) : (
+                accused.map((acc) => (
+                  <Card key={acc.name} title={`${acc.name} - Notices & Warrants`}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <SubSection title="41A Notice">
+                        <FieldRow label="Issued" value={acc.notice41A?.issued ? "Yes" : "No"} />
+                        {acc.notice41A?.issued && (
+                          <>
+                            <FieldRow label="Notice 1 - Date" value={acc.notice41A.notice1Date ? new Date(acc.notice41A.notice1Date).toLocaleDateString() : "—"} />
+                            <FieldRow label="Notice 2 - Date" value={acc.notice41A.notice2Date ? new Date(acc.notice41A.notice2Date).toLocaleDateString() : "—"} />
+                            <FieldRow label="Notice 3 - Date" value={acc.notice41A.notice3Date ? new Date(acc.notice41A.notice3Date).toLocaleDateString() : "—"} />
+                          </>
+                        )}
+                      </SubSection>
+                      <SubSection title="Warrant">
+                        <FieldRow label="Prayed" value={acc.warrant?.prayed ? "Yes" : "No"} />
+                        {acc.warrant?.prayed && (
+                          <>
+                            <FieldRow label="Date of Prayer" value={acc.warrant.prayerDate ? new Date(acc.warrant.prayerDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Receipt" value={acc.warrant.receiptDate ? new Date(acc.warrant.receiptDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Execution" value={acc.warrant.executionDate ? new Date(acc.warrant.executionDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Return" value={acc.warrant.returnDate ? new Date(acc.warrant.returnDate).toLocaleDateString() : "—"} />
+                          </>
+                        )}
+                      </SubSection>
+                      <SubSection title="Proclamation">
+                        <FieldRow label="Prayed" value={acc.proclamation?.prayed ? "Yes" : "No"} />
+                        {acc.proclamation?.prayed && (
+                          <>
+                            <FieldRow label="Date of Prayer" value={acc.proclamation.prayerDate ? new Date(acc.proclamation.prayerDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Receipt" value={acc.proclamation.receiptDate ? new Date(acc.proclamation.receiptDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Execution" value={acc.proclamation.executionDate ? new Date(acc.proclamation.executionDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Return" value={acc.proclamation.returnDate ? new Date(acc.proclamation.returnDate).toLocaleDateString() : "—"} />
+                          </>
+                        )}
+                      </SubSection>
+                      <SubSection title="Attachment">
+                        <FieldRow label="Prayed" value={acc.attachment?.prayed ? "Yes" : "No"} />
+                        {acc.attachment?.prayed && (
+                          <>
+                            <FieldRow label="Date of Prayer" value={acc.attachment.prayerDate ? new Date(acc.attachment.prayerDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Receipt" value={acc.attachment.receiptDate ? new Date(acc.attachment.receiptDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Execution" value={acc.attachment.executionDate ? new Date(acc.attachment.executionDate).toLocaleDateString() : "—"} />
+                            <FieldRow label="Date of Return" value={acc.attachment.returnDate ? new Date(acc.attachment.returnDate).toLocaleDateString() : "—"} />
+                          </>
+                        )}
+                      </SubSection>
+                    </div>
+                  </Card>
+                ))
+              )}
             </div>
           )}
 
@@ -519,11 +650,8 @@ export default function CaseDetail() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="Charge Sheet">
                 <FieldRow label="Submitted" value={caseData?.chargeSheet?.submitted ? "Yes" : "No"} />
-                {caseData?.chargeSheet?.submitted && (
-                  <>
-                    <FieldRow label="Date of Submission" value={caseData.chargeSheet.submissionDate ? new Date(caseData.chargeSheet.submissionDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Receipt" value={caseData.chargeSheet.receiptDate ? new Date(caseData.chargeSheet.receiptDate).toLocaleDateString() : "—"} />
-                  </>
+                {caseData?.chargeSheet?.submitted && caseData?.chargeSheet?.submissionDate && (
+                  <FieldRow label="Date of Submission" value={new Date(caseData.chargeSheet.submissionDate).toLocaleDateString()} />
                 )}
               </Card>
               <Card title="Final Charge Sheet Submission in Court">
@@ -533,26 +661,52 @@ export default function CaseDetail() {
                 )}
               </Card>
               <Card title="Prosecution Sanction">
-                <FieldRow label="Required" value={caseData?.prosecutionSanction?.required ? "Yes" : "No"} />
-                {caseData?.prosecutionSanction?.submissionDate && (
-                  <>
-                    <FieldRow label="Date of Submission" value={new Date(caseData.prosecutionSanction.submissionDate).toLocaleDateString()} />
-                    <FieldRow label="Date of Receipt" value={caseData.prosecutionSanction.receiptDate ? new Date(caseData.prosecutionSanction.receiptDate).toLocaleDateString() : "—"} />
-                  </>
+                {caseData?.prosecutionSanction && Array.isArray(caseData.prosecutionSanction) && caseData.prosecutionSanction.length > 0 ? (
+                  <div className="space-y-4">
+                    {caseData.prosecutionSanction.map((sanction: any, index: number) => (
+                      <div key={sanction._id || index} className="border-b border-slate-200 last:border-b-0 pb-4 last:pb-0">
+                        <h4 className="text-sm font-semibold text-slate-900 mb-2">Sanction {index + 1}</h4>
+                        <FieldRow label="Type" value={sanction.type || "—"} />
+                        {sanction.submissionDate && (
+                          <FieldRow label="Date of Submission" value={new Date(sanction.submissionDate).toLocaleDateString()} />
+                        )}
+                        {sanction.receiptDate && (
+                          <FieldRow label="Date of Receipt" value={new Date(sanction.receiptDate).toLocaleDateString()} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">No prosecution sanctions recorded</p>
                 )}
               </Card>
               <Card title="FSL / Forensic">
-                <FieldRow label="FSL Report Required" value={caseData?.fsl?.reportRequired ? "Yes" : "No"} />
-                {caseData?.fsl && (
-                  <>
-                    <FieldRow label="Sample to be Collected" value={caseData.fsl.sampleToBeCollected || "—"} />
-                    <FieldRow label="Sample Collected" value={caseData.fsl.sampleCollected ? "Yes" : "No"} />
-                    <FieldRow label="Date of Sample Collection" value={caseData.fsl.sampleCollectionDate ? new Date(caseData.fsl.sampleCollectionDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Sample Sending" value={caseData.fsl.sampleSendingDate ? new Date(caseData.fsl.sampleSendingDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="FSL Report Received" value={caseData.fsl.reportReceived ? "Yes" : "No"} />
-                    <FieldRow label="Date of Report Received" value={caseData.fsl.reportReceivedDate ? new Date(caseData.fsl.reportReceivedDate).toLocaleDateString() : "—"} />
-                    <FieldRow label="Date of Report" value={caseData.fsl.reportDate ? new Date(caseData.fsl.reportDate).toLocaleDateString() : "—"} />
-                  </>
+                {caseData?.fsl && Array.isArray(caseData.fsl) && caseData.fsl.length > 0 ? (
+                  <div className="space-y-4">
+                    {caseData.fsl.map((fslEntry: any, index: number) => (
+                      <div key={index} className="border-b border-slate-200 last:border-b-0 pb-4 last:pb-0">
+                        <h4 className="text-sm font-semibold text-slate-900 mb-2">FSL Report {index + 1}</h4>
+                        <FieldRow label="FSL Report Required" value={fslEntry.reportRequired ? "Yes" : "No"} />
+                        <FieldRow label="Sample to be Collected" value={fslEntry.sampleToBeCollected || "—"} />
+                        <FieldRow label="Sample Collected" value={fslEntry.sampleCollected ? "Yes" : "No"} />
+                        {fslEntry.sampleCollectionDate && (
+                          <FieldRow label="Date of Sample Collection" value={new Date(fslEntry.sampleCollectionDate).toLocaleDateString()} />
+                        )}
+                        {fslEntry.sampleSendingDate && (
+                          <FieldRow label="Date of Sample Sending" value={new Date(fslEntry.sampleSendingDate).toLocaleDateString()} />
+                        )}
+                        <FieldRow label="FSL Report Received" value={fslEntry.reportReceived ? "Yes" : "No"} />
+                        {fslEntry.reportReceivedDate && (
+                          <FieldRow label="Date of Report Received" value={new Date(fslEntry.reportReceivedDate).toLocaleDateString()} />
+                        )}
+                        {fslEntry.reportDate && (
+                          <FieldRow label="Date of Report" value={new Date(fslEntry.reportDate).toLocaleDateString()} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">No FSL reports recorded</p>
                 )}
               </Card>
             </div>
@@ -607,12 +761,24 @@ export default function CaseDetail() {
                 <FieldRow label="Final Chargesheet" value={caseData?.reports?.finalChargesheet ? new Date(caseData.reports.finalChargesheet).toLocaleDateString() : "—"} />
               </Card>
               <Card title="Reasons for Pendency">
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="text-sm">
-                    <span className="text-slate-600 font-medium">Diary No. & Date:</span>
-                    <span className="ml-2 font-medium text-slate-900">
-                      {caseData?.diaryNo || "—"} {caseData?.diaryDate ? `• ${new Date(caseData.diaryDate).toLocaleDateString()}` : ""}
-                    </span>
+                    <span className="text-slate-600 font-medium">Diary Entries:</span>
+                    {caseData?.diary && Array.isArray(caseData.diary) && caseData.diary.length > 0 ? (
+                      <ul className="mt-2 space-y-2">
+                        {caseData.diary.map((diaryEntry: any, idx: number) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                            <span className="font-medium text-slate-900">
+                              {diaryEntry.diaryNo || "—"} 
+                              {diaryEntry.diaryDate ? ` • ${new Date(diaryEntry.diaryDate).toLocaleDateString()}` : ""}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-slate-500">No diary entries recorded</p>
+                    )}
                   </div>
                   <div className="text-sm">
                     <span className="text-slate-600 font-medium">Reason:</span>

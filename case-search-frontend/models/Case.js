@@ -111,16 +111,13 @@ const ChargeSheetSchema = new mongoose.Schema({
   submissionDate: {
     type: Date,
   },
-  receiptDate: {
-    type: Date,
-  },
 }, { _id: false });
 
 // Schema for Prosecution Sanction
 const ProsecutionSanctionSchema = new mongoose.Schema({
-  required: {
-    type: Boolean,
-    default: false,
+  type: {
+    type: String,
+    required: true,
   },
   submissionDate: {
     type: Date,
@@ -128,7 +125,7 @@ const ProsecutionSanctionSchema = new mongoose.Schema({
   receiptDate: {
     type: Date,
   },
-}, { _id: false });
+}, { _id: true });
 
 // Schema for FSL/Forensic
 const FSLSchema = new mongoose.Schema({
@@ -260,6 +257,10 @@ const CaseSchema = new mongoose.Schema({
     type: String,
     enum: ['Detected', 'Undetected'],
   },
+  srNsr: {
+    type: String,
+    enum: ['SR', 'NSR'],
+  },
   priority: {
     type: String,
     enum: ['Under monitoring', 'Normal'],
@@ -275,28 +276,16 @@ const CaseSchema = new mongoose.Schema({
   reasonForPendency: [{
     type: String,
   }],
-  diaryNo: {
-    type: String,
-  },
-  diaryDate: {
-    type: Date,
-  },
+  diary: [{
+    diaryNo: {
+      type: String,
+    },
+    diaryDate: {
+      type: Date,
+    },
+  }],
   // Accused information
   accused: [AccusedSchema],
-  // Case-level legal processes
-  warrant: {
-    type: LegalProcessSchema,
-  },
-  proclamation: {
-    type: LegalProcessSchema,
-  },
-  attachment: {
-    type: LegalProcessSchema,
-  },
-  // Notice 41A (case-level, if different from accused-level)
-  notice41A: {
-    type: Notice41ASchema,
-  },
   // Reports
   reports: {
     type: ReportInfoSchema,
@@ -312,12 +301,8 @@ const CaseSchema = new mongoose.Schema({
   finalChargesheetSubmissionDate: {
     type: Date,
   },
-  prosecutionSanction: {
-    type: ProsecutionSanctionSchema,
-  },
-  fsl: {
-    type: FSLSchema,
-  },
+  prosecutionSanction: [ProsecutionSanctionSchema],
+  fsl: [FSLSchema],
   // Victim information
   injuryReport: {
     type: InjuryReportSchema,
