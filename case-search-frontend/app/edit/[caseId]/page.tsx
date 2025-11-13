@@ -27,6 +27,15 @@ const CRIME_HEADS = [
   "Fraud",
 ];
 
+const INJURY_TYPES = [
+  "Minor",
+  "Moderate",
+  "Serious",
+  "Grievous",
+  "Fatal",
+  "Other",
+];
+
 export default function EditCase() {
   const router = useRouter();
   const params = useParams<{ caseId: string | string[] | undefined }>();
@@ -63,23 +72,27 @@ export default function EditCase() {
     priority: "Normal" as Priority,
     isPropertyProfessionalCrime: false,
     petition: false,
+    publicPetitionFile: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
     reasonForPendency: [] as string[],
     diary: [] as Array<{ diaryNo: string; diaryDate: string }>,
     reports: {
-      r1: "",
+      spReports: [] as Array<{
+        rLabel: string;
+        rDate: string;
+        prLabel: string;
+        prDate: string;
+        file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null;
+      }>,
       supervision: "",
-      r2: "",
-      r3: "",
-      pr1: "",
-      pr2: "",
-      pr3: "",
       fpr: "",
       finalOrder: "",
       finalChargesheet: "",
+      file: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
     },
     chargeSheet: {
       submitted: false,
       submissionDate: "",
+      file: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
     },
     finalChargesheetSubmitted: false,
     finalChargesheetSubmissionDate: "",
@@ -87,6 +100,7 @@ export default function EditCase() {
       type: string;
       submissionDate: string;
       receiptDate: string;
+      file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null;
     }>,
     fsl: [] as Array<{
       reportRequired: boolean;
@@ -97,18 +111,22 @@ export default function EditCase() {
       reportReceived: boolean;
       reportReceivedDate: string;
       reportDate: string;
+      file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null;
     }>,
     injuryReport: {
       report: false,
+      injuryType: "",
       injuryDate: "",
       reportReceived: false,
       reportDate: "",
+      file: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
     },
     pmReport: {
       report: "" as "Yes" | "No" | "N/A" | "",
       pmDate: "",
       reportReceived: false,
       reportDate: "",
+      file: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
     },
     compensationProposal: {
       required: false,
@@ -118,6 +136,9 @@ export default function EditCase() {
     accused: [] as Array<{
       name: string;
       status: AccusedStatus;
+      address: string;
+      mobileNumber: string;
+      aadhaarNumber: string;
       arrestedDate?: string;
       arrestedOn?: string;
       notice41A?: {
@@ -200,6 +221,30 @@ export default function EditCase() {
       if (data.success) {
         const fetchedCaseData = data.data;
         setCaseData(fetchedCaseData);
+        const reportsData = fetchedCaseData.reports || {};
+        const spReports =
+          Array.isArray(reportsData.spReports) && reportsData.spReports.length > 0
+            ? reportsData.spReports.map((report: any, idx: number) => ({
+                rLabel: report.rLabel || `R${idx + 1}`,
+                rDate: report.rDate ? new Date(report.rDate).toISOString().split('T')[0] : "",
+                prLabel: report.prLabel || `PR${idx + 1}`,
+                prDate: report.prDate ? new Date(report.prDate).toISOString().split('T')[0] : "",
+                file: report.file || null,
+              }))
+            : [
+                { rLabel: "R1", rDate: reportsData.r1, prLabel: "PR1", prDate: reportsData.pr1 },
+                { rLabel: "R2", rDate: reportsData.r2, prLabel: "PR2", prDate: reportsData.pr2 },
+                { rLabel: "R3", rDate: reportsData.r3, prLabel: "PR3", prDate: reportsData.pr3 },
+              ]
+                .filter(({ rDate, prDate }) => rDate || prDate)
+                .map(({ rLabel, rDate, prLabel, prDate }, idx) => ({
+                  rLabel: rLabel || `R${idx + 1}`,
+                  prLabel: prLabel || `PR${idx + 1}`,
+                  rDate: rDate ? new Date(rDate).toISOString().split('T')[0] : "",
+                  prDate: prDate ? new Date(prDate).toISOString().split('T')[0] : "",
+                  file: null,
+                }));
+
         setFormData({
           caseNo: fetchedCaseData.caseNo || "",
           year: fetchedCaseData.year || new Date().getFullYear(),
@@ -222,21 +267,19 @@ export default function EditCase() {
               }))
             : [],
           reports: {
-            r1: fetchedCaseData.reports?.r1 ? new Date(fetchedCaseData.reports.r1).toISOString().split('T')[0] : "",
+            spReports,
             supervision: fetchedCaseData.reports?.supervision ? new Date(fetchedCaseData.reports.supervision).toISOString().split('T')[0] : "",
-            r2: fetchedCaseData.reports?.r2 ? new Date(fetchedCaseData.reports.r2).toISOString().split('T')[0] : "",
-            r3: fetchedCaseData.reports?.r3 ? new Date(fetchedCaseData.reports.r3).toISOString().split('T')[0] : "",
-            pr1: fetchedCaseData.reports?.pr1 ? new Date(fetchedCaseData.reports.pr1).toISOString().split('T')[0] : "",
-            pr2: fetchedCaseData.reports?.pr2 ? new Date(fetchedCaseData.reports.pr2).toISOString().split('T')[0] : "",
-            pr3: fetchedCaseData.reports?.pr3 ? new Date(fetchedCaseData.reports.pr3).toISOString().split('T')[0] : "",
             fpr: fetchedCaseData.reports?.fpr ? new Date(fetchedCaseData.reports.fpr).toISOString().split('T')[0] : "",
             finalOrder: fetchedCaseData.reports?.finalOrder ? new Date(fetchedCaseData.reports.finalOrder).toISOString().split('T')[0] : "",
             finalChargesheet: fetchedCaseData.reports?.finalChargesheet ? new Date(fetchedCaseData.reports.finalChargesheet).toISOString().split('T')[0] : "",
+            file: fetchedCaseData.reports?.file || null,
           },
           chargeSheet: {
             submitted: fetchedCaseData.chargeSheet?.submitted || false,
             submissionDate: fetchedCaseData.chargeSheet?.submissionDate ? new Date(fetchedCaseData.chargeSheet.submissionDate).toISOString().split('T')[0] : "",
+            file: fetchedCaseData.chargeSheet?.file || null,
           },
+          publicPetitionFile: fetchedCaseData.publicPetitionFile || null,
           finalChargesheetSubmitted: fetchedCaseData.finalChargesheetSubmitted || false,
           finalChargesheetSubmissionDate: fetchedCaseData.finalChargesheetSubmissionDate ? new Date(fetchedCaseData.finalChargesheetSubmissionDate).toISOString().split('T')[0] : "",
           prosecutionSanction: fetchedCaseData.prosecutionSanction && Array.isArray(fetchedCaseData.prosecutionSanction)
@@ -244,6 +287,7 @@ export default function EditCase() {
                 type: sanction.type || "",
                 submissionDate: sanction.submissionDate ? new Date(sanction.submissionDate).toISOString().split('T')[0] : "",
                 receiptDate: sanction.receiptDate ? new Date(sanction.receiptDate).toISOString().split('T')[0] : "",
+                file: sanction.file || null,
               }))
             : [],
           fsl: fetchedCaseData.fsl && Array.isArray(fetchedCaseData.fsl)
@@ -256,26 +300,37 @@ export default function EditCase() {
                 reportReceived: fslEntry.reportReceived || false,
                 reportReceivedDate: fslEntry.reportReceivedDate ? new Date(fslEntry.reportReceivedDate).toISOString().split('T')[0] : "",
                 reportDate: fslEntry.reportDate ? new Date(fslEntry.reportDate).toISOString().split('T')[0] : "",
+                file: fslEntry.file || null,
               }))
             : [],
           injuryReport: {
             report: fetchedCaseData.injuryReport?.report || false,
+            injuryType: fetchedCaseData.injuryReport?.injuryType || "",
             injuryDate: fetchedCaseData.injuryReport?.injuryDate ? new Date(fetchedCaseData.injuryReport.injuryDate).toISOString().split('T')[0] : "",
             reportReceived: fetchedCaseData.injuryReport?.reportReceived || false,
             reportDate: fetchedCaseData.injuryReport?.reportDate ? new Date(fetchedCaseData.injuryReport.reportDate).toISOString().split('T')[0] : "",
+            file: fetchedCaseData.injuryReport?.file || null,
           },
           pmReport: {
             report: fetchedCaseData.pmReport?.report || "",
             pmDate: fetchedCaseData.pmReport?.pmDate ? new Date(fetchedCaseData.pmReport.pmDate).toISOString().split('T')[0] : "",
             reportReceived: fetchedCaseData.pmReport?.reportReceived || false,
             reportDate: fetchedCaseData.pmReport?.reportDate ? new Date(fetchedCaseData.pmReport.reportDate).toISOString().split('T')[0] : "",
+            file: fetchedCaseData.pmReport?.file || null,
           },
           compensationProposal: {
             required: fetchedCaseData.compensationProposal?.required || false,
             submitted: fetchedCaseData.compensationProposal?.submitted || false,
             submissionDate: fetchedCaseData.compensationProposal?.submissionDate ? new Date(fetchedCaseData.compensationProposal.submissionDate).toISOString().split('T')[0] : "",
           },
-          accused: fetchedCaseData.accused || [],
+          accused: fetchedCaseData.accused && Array.isArray(fetchedCaseData.accused)
+            ? fetchedCaseData.accused.map((acc: any) => ({
+                ...acc,
+                address: acc.address || "",
+                mobileNumber: acc.mobileNumber || "",
+                aadhaarNumber: acc.aadhaarNumber || "",
+              }))
+            : [],
         });
       } else {
         setError(data.error || "Failed to fetch case");
@@ -303,7 +358,16 @@ export default function EditCase() {
   const addAccused = () => {
     setFormData(prev => ({
       ...prev,
-      accused: [...prev.accused, { name: "", status: "Decision pending" as AccusedStatus }],
+      accused: [
+        ...prev.accused,
+        {
+          name: "",
+          status: "Decision pending" as AccusedStatus,
+          address: "",
+          mobileNumber: "",
+          aadhaarNumber: "",
+        },
+      ],
     }));
   };
 
@@ -385,6 +449,61 @@ export default function EditCase() {
     }));
   };
 
+  const addSPReport = () => {
+    setFormData(prev => {
+      const existing = prev.reports?.spReports || [];
+      const nextIndex = existing.length + 1;
+      return {
+        ...prev,
+        reports: {
+          ...(prev.reports || {}),
+          spReports: [
+            ...existing,
+            {
+              rLabel: `R${nextIndex}`,
+              rDate: "",
+              prLabel: `PR${nextIndex}`,
+              prDate: "",
+              file: null,
+            },
+          ],
+        },
+      };
+    });
+  };
+
+  const updateSPReport = (
+    index: number,
+    field: "rLabel" | "rDate" | "prLabel" | "prDate",
+    value: string
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      reports: {
+        ...(prev.reports || {}),
+        spReports: (prev.reports?.spReports || []).map((report, i) =>
+          i === index ? { ...report, [field]: value } : report
+        ),
+      },
+    }));
+  };
+
+  const removeSPReport = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      reports: {
+        ...(prev.reports || {}),
+        spReports: (prev.reports?.spReports || [])
+          .filter((_, i) => i !== index)
+          .map((report, idx) => ({
+            ...report,
+            rLabel: report.rLabel || `R${idx + 1}`,
+            prLabel: report.prLabel || `PR${idx + 1}`,
+          })),
+      },
+    }));
+  };
+
   const updateChargeSheet = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -398,7 +517,7 @@ export default function EditCase() {
   const addProsecutionSanction = () => {
     setFormData(prev => ({
       ...prev,
-      prosecutionSanction: [...prev.prosecutionSanction, { type: "", submissionDate: "", receiptDate: "" }],
+      prosecutionSanction: [...prev.prosecutionSanction, { type: "", submissionDate: "", receiptDate: "", file: null }],
     }));
   };
 
@@ -430,6 +549,7 @@ export default function EditCase() {
         reportReceived: false,
         reportReceivedDate: "",
         reportDate: "",
+        file: null,
       }],
     }));
   };
@@ -487,6 +607,174 @@ export default function EditCase() {
     }));
   };
 
+  // File upload handler
+  const handleFileUpload = async (file: File, folder: string): Promise<{ public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to upload file');
+    }
+
+    const result = await response.json();
+    return result.data;
+  };
+
+  // File upload handlers for each section
+  const uploadReportsFile = async (file: File, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/all-reports');
+      setFormData(prev => ({
+        ...prev,
+        reports: {
+          ...prev.reports,
+          file: fileData,
+        },
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload reports file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadPublicPetitionFile = async (file: File, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/public-petition');
+      setFormData(prev => ({
+        ...prev,
+        publicPetitionFile: fileData,
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload public petition file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadChargesheetFile = async (file: File, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/chargesheet');
+      setFormData(prev => ({
+        ...prev,
+        chargeSheet: {
+          ...prev.chargeSheet,
+          file: fileData,
+        },
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload chargesheet file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadProsecutionSanctionFile = async (file: File, index: number, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/prosecution-sanction');
+      setFormData(prev => ({
+        ...prev,
+        prosecutionSanction: prev.prosecutionSanction.map((sanction, i) =>
+          i === index ? { ...sanction, file: fileData } : sanction
+        ),
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload prosecution sanction file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadFSLFile = async (file: File, index: number, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/fsl');
+      setFormData(prev => ({
+        ...prev,
+        fsl: prev.fsl.map((fslEntry, i) =>
+          i === index ? { ...fslEntry, file: fileData } : fslEntry
+        ),
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload FSL file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadInjuryFile = async (file: File, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/injury');
+      setFormData(prev => ({
+        ...prev,
+        injuryReport: {
+          ...prev.injuryReport,
+          file: fileData,
+        },
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload injury report file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadPMFile = async (file: File, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/pm');
+      setFormData(prev => ({
+        ...prev,
+        pmReport: {
+          ...prev.pmReport,
+          file: fileData,
+        },
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload PM report file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadSPReportFile = async (file: File, index: number, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/sp-dsp-reports');
+      setFormData(prev => ({
+        ...prev,
+        reports: {
+          ...prev.reports,
+          spReports: prev.reports.spReports.map((report, i) =>
+            i === index ? { ...report, file: fileData } : report
+          ),
+        },
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload SP/DSP report file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  // File delete handlers
+  const deleteFile = async (publicId: string) => {
+    try {
+      const response = await fetch(`/api/upload?public_id=${encodeURIComponent(publicId)}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete file');
+      }
+    } catch (error: any) {
+      setError(`Failed to delete file: ${error.message}`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -513,6 +801,16 @@ export default function EditCase() {
         return cleaned;
       };
 
+      const filteredSPReports = (formData.reports?.spReports || [])
+        .map(report => ({
+          rLabel: report.rLabel?.trim() || "",
+          rDate: report.rDate || "",
+          prLabel: report.prLabel?.trim() || "",
+          prDate: report.prDate || "",
+          file: report.file || null,
+        }))
+        .filter(report => report.rLabel || report.rDate || report.prLabel || report.prDate);
+
       const cleanedData = cleanNestedDates({
         ...formData,
         investigationStatus: formData.investigationStatus || undefined,
@@ -520,6 +818,10 @@ export default function EditCase() {
         diary: formData.diary.filter(entry => entry.diaryNo || entry.diaryDate),
         prosecutionSanction: formData.prosecutionSanction.filter(sanction => sanction.type),
         fsl: formData.fsl.filter(fslEntry => fslEntry.reportRequired || fslEntry.sampleToBeCollected || fslEntry.sampleCollected),
+        reports: {
+          ...(formData.reports || {}),
+          spReports: filteredSPReports,
+        },
         pmReport: {
           ...formData.pmReport,
           report: formData.pmReport.report || undefined,
@@ -829,6 +1131,46 @@ export default function EditCase() {
                   />
                   Case has petition
                 </label>
+                {formData.petition && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-slate-700 mb-2">Upload Public Petition File (PDF or Image)</label>
+                    {formData.publicPetitionFile ? (
+                      <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="text-sm text-slate-700">{formData.publicPetitionFile.original_filename}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (formData.publicPetitionFile?.public_id) {
+                              await deleteFile(formData.publicPetitionFile.public_id);
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              publicPetitionFile: null,
+                            }));
+                          }}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadPublicPetitionFile(file, e.target);
+                        }}
+                        className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
               {/* Diary Entries */}
               <div className="col-span-full">
@@ -953,6 +1295,36 @@ export default function EditCase() {
                           <option value="Arrested">Arrested</option>
                           <option value="Not arrested">Not arrested</option>
                         </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Address</label>
+                        <textarea
+                          value={accused.address || ""}
+                          onChange={(e) => updateAccused(index, "address", e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                          placeholder="Enter address"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Mobile Number</label>
+                        <input
+                          type="tel"
+                          value={accused.mobileNumber || ""}
+                          onChange={(e) => updateAccused(index, "mobileNumber", e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                          placeholder="Enter mobile number"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Aadhaar Number</label>
+                        <input
+                          type="text"
+                          value={accused.aadhaarNumber || ""}
+                          onChange={(e) => updateAccused(index, "aadhaarNumber", e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                          placeholder="Enter Aadhaar number"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-700 mb-1">Arrest Date</label>
@@ -1193,68 +1565,136 @@ export default function EditCase() {
               </svg>
               Reports
             </h3>
-            <div className="bg-white rounded-lg p-4 border border-slate-200">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">R1 Date</label>
-                  <input
-                    type="date"
-                    value={formData.reports.r1}
-                    onChange={(e) => updateReports("r1", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
+            <div className="bg-white rounded-lg p-4 border border-slate-200 space-y-5">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">SP / DSP Reports</span>
+                  <button
+                    type="button"
+                    onClick={addSPReport}
+                    className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Report Pair
+                  </button>
                 </div>
+                {(formData.reports.spReports || []).length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-2">
+                    No SP / DSP reports added. Click &quot;Add Report Pair&quot; to begin.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {formData.reports.spReports.map((report, index) => (
+                      <div key={index} className="border border-slate-200 rounded-lg bg-slate-50 p-3">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="text-xs font-semibold text-slate-700">Report Pair {index + 1}</h4>
+                          <button
+                            type="button"
+                            onClick={() => removeSPReport(index)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">SP Label</label>
+                            <input
+                              type="text"
+                              value={report.rLabel}
+                              onChange={(e) => updateSPReport(index, "rLabel", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              placeholder={`R${index + 1}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">SP Report Date</label>
+                            <input
+                              type="date"
+                              value={report.rDate}
+                              onChange={(e) => updateSPReport(index, "rDate", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">DSP Label</label>
+                            <input
+                              type="text"
+                              value={report.prLabel}
+                              onChange={(e) => updateSPReport(index, "prLabel", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              placeholder={`PR${index + 1}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">DSP Report Date</label>
+                            <input
+                              type="date"
+                              value={report.prDate}
+                              onChange={(e) => updateSPReport(index, "prDate", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                          </div>
+                        </div>
+                        {/* File Upload for Individual SP/DSP Report Pair */}
+                        <div className="border-t border-slate-200 pt-3 mt-3">
+                          <label className="block text-xs font-medium text-slate-700 mb-2">Upload Report File (PDF or Image)</label>
+                          {report.file ? (
+                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-sm text-slate-700">{report.file.original_filename}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (report.file?.public_id) {
+                                    await deleteFile(report.file.public_id);
+                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    reports: {
+                                      ...prev.reports,
+                                      spReports: prev.reports.spReports.map((r, i) =>
+                                        i === index ? { ...r, file: null } : r
+                                      ),
+                                    },
+                                  }));
+                                }}
+                                className="text-xs text-red-600 hover:text-red-800"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) uploadSPReportFile(file, index, e.target);
+                              }}
+                              className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Supervision Date</label>
                   <input
                     type="date"
                     value={formData.reports.supervision}
                     onChange={(e) => updateReports("supervision", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">R2 Date</label>
-                  <input
-                    type="date"
-                    value={formData.reports.r2}
-                    onChange={(e) => updateReports("r2", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">R3 Date</label>
-                  <input
-                    type="date"
-                    value={formData.reports.r3}
-                    onChange={(e) => updateReports("r3", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">PR1 Date</label>
-                  <input
-                    type="date"
-                    value={formData.reports.pr1}
-                    onChange={(e) => updateReports("pr1", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">PR2 Date</label>
-                  <input
-                    type="date"
-                    value={formData.reports.pr2}
-                    onChange={(e) => updateReports("pr2", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">PR3 Date</label>
-                  <input
-                    type="date"
-                    value={formData.reports.pr3}
-                    onChange={(e) => updateReports("pr3", e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
@@ -1286,10 +1726,49 @@ export default function EditCase() {
                   />
                 </div>
               </div>
+              {/* File Upload for All Reports */}
+              <div className="border-t border-slate-200 pt-4">
+                <label className="block text-xs font-medium text-slate-700 mb-2">Upload Report File (PDF or Image)</label>
+                {formData.reports.file ? (
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm text-slate-700">{formData.reports.file.original_filename}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (formData.reports.file?.public_id) {
+                          await deleteFile(formData.reports.file.public_id);
+                        }
+                        setFormData(prev => ({
+                          ...prev,
+                          reports: { ...prev.reports, file: null },
+                        }));
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadReportsFile(file, e.target);
+                    }}
+                    className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Charge Sheet Section */}
+          {/* Chargesheet submitted in VO Section */}
           <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
             <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
               <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1298,7 +1777,7 @@ export default function EditCase() {
                 <line x1="16" y1="13" x2="8" y2="13" />
                 <line x1="16" y1="17" x2="8" y2="17" />
               </svg>
-              Charge Sheet
+              Chargesheet submitted in VO
             </h3>
             <div className="bg-white rounded-lg p-4 border border-slate-200 space-y-4">
               <div className="space-y-3">
@@ -1309,16 +1788,55 @@ export default function EditCase() {
                     onChange={(e) => updateChargeSheet("submitted", e.target.checked)}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  Charge Sheet Submitted
+                  Chargesheet submitted in VO
                 </label>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Submission Date</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Submission Date (VO)</label>
                   <input
                     type="date"
                     value={formData.chargeSheet.submissionDate}
                     onChange={(e) => updateChargeSheet("submissionDate", e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
+                </div>
+                {/* File Upload for Chargesheet */}
+                <div className="border-t border-slate-200 pt-3">
+                  <label className="block text-xs font-medium text-slate-700 mb-2">Upload Chargesheet File (PDF or Image)</label>
+                  {formData.chargeSheet.file ? (
+                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm text-slate-700">{formData.chargeSheet.file.original_filename}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (formData.chargeSheet.file?.public_id) {
+                            await deleteFile(formData.chargeSheet.file.public_id);
+                          }
+                          setFormData(prev => ({
+                            ...prev,
+                            chargeSheet: { ...prev.chargeSheet, file: null },
+                          }));
+                        }}
+                        className="text-xs text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadChargesheetFile(file, e.target);
+                      }}
+                      className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  )}
                 </div>
               </div>
               <div className="pt-3 border-t border-slate-200 space-y-3">
@@ -1330,10 +1848,10 @@ export default function EditCase() {
                     onChange={handleInputChange}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  Final Chargesheet Submitted
+                  Chargesheet submitted in Court
                 </label>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Final Chargesheet Submission Date</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Submission Date (Court)</label>
                   <input
                     type="date"
                     name="finalChargesheetSubmissionDate"
@@ -1415,6 +1933,42 @@ export default function EditCase() {
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                         />
                       </div>
+                    </div>
+                    {/* File Upload for Prosecution Sanction */}
+                    <div className="border-t border-slate-200 pt-3 mt-3">
+                      <label className="block text-xs font-medium text-slate-700 mb-2">Upload Prosecution Sanction File (PDF or Image)</label>
+                      {sanction.file ? (
+                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm text-slate-700">{sanction.file.original_filename}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (sanction.file?.public_id) {
+                                await deleteFile(sanction.file.public_id);
+                              }
+                              updateProsecutionSanction(index, "file", null);
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) uploadProsecutionSanctionFile(file, index, e.target);
+                          }}
+                          className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1539,6 +2093,42 @@ export default function EditCase() {
                             />
                           </div>
                         </div>
+                        {/* File Upload for FSL */}
+                        <div className="border-t border-slate-200 pt-3 mt-3">
+                          <label className="block text-xs font-medium text-slate-700 mb-2">Upload FSL File (PDF or Image)</label>
+                          {fslEntry.file ? (
+                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-sm text-slate-700">{fslEntry.file.original_filename}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (fslEntry.file?.public_id) {
+                                    await deleteFile(fslEntry.file.public_id);
+                                  }
+                                  updateFSL(index, "file", null);
+                                }}
+                                className="text-xs text-red-600 hover:text-red-800"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) uploadFSLFile(file, index, e.target);
+                              }}
+                              className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1565,8 +2155,23 @@ export default function EditCase() {
                     onChange={(e) => updateInjuryReport("report", e.target.checked)}
                     className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  Report Available
+                  Report Required
                 </label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Injury Type</label>
+                  <select
+                    value={formData.injuryReport.injuryType}
+                    onChange={(e) => updateInjuryReport("injuryType", e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="">Select injury type</option>
+                    {INJURY_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">Injury Date</label>
@@ -1596,6 +2201,45 @@ export default function EditCase() {
                   />
                   Report Received
                 </label>
+                {/* File Upload for Injury Report */}
+                <div className="border-t border-slate-200 pt-3 mt-3">
+                  <label className="block text-xs font-medium text-slate-700 mb-2">Upload Injury Report File (PDF or Image)</label>
+                  {formData.injuryReport.file ? (
+                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm text-slate-700">{formData.injuryReport.file.original_filename}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (formData.injuryReport.file?.public_id) {
+                            await deleteFile(formData.injuryReport.file.public_id);
+                          }
+                          setFormData(prev => ({
+                            ...prev,
+                            injuryReport: { ...prev.injuryReport, file: null },
+                          }));
+                        }}
+                        className="text-xs text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadInjuryFile(file, e.target);
+                      }}
+                      className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1655,6 +2299,45 @@ export default function EditCase() {
                   />
                   Report Received
                 </label>
+                {/* File Upload for PM Report */}
+                <div className="border-t border-slate-200 pt-3 mt-3">
+                  <label className="block text-xs font-medium text-slate-700 mb-2">Upload PM Report File (PDF or Image)</label>
+                  {formData.pmReport.file ? (
+                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm text-slate-700">{formData.pmReport.file.original_filename}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (formData.pmReport.file?.public_id) {
+                            await deleteFile(formData.pmReport.file.public_id);
+                          }
+                          setFormData(prev => ({
+                            ...prev,
+                            pmReport: { ...prev.pmReport, file: null },
+                          }));
+                        }}
+                        className="text-xs text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadPMFile(file, e.target);
+                      }}
+                      className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>

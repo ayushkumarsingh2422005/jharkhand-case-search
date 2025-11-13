@@ -13,6 +13,9 @@ type SrNsr = "SR" | "NSR";
 type AccusedInfo = {
   name: string;
   status: AccusedStatus;
+  address?: string;
+  mobileNumber?: string;
+  aadhaarNumber?: string;
   arrestedOn?: string;
   notice41A?: {
     issued: boolean;
@@ -218,13 +221,35 @@ export default function CaseDetail() {
           diaryDate: entry.diaryDate ? new Date(entry.diaryDate).toISOString().split('T')[0] : "",
         })),
         reports: {
-          r1: caseData.reports?.r1 ? new Date(caseData.reports.r1).toISOString().split('T')[0] : "",
+          spReports: (() => {
+            const reportsData = caseData.reports || {};
+            if (Array.isArray(reportsData.spReports) && reportsData.spReports.length > 0) {
+              return reportsData.spReports.map((report: any, idx: number) => ({
+                rLabel: report.rLabel || `R${idx + 1}`,
+                rDate: report.rDate ? new Date(report.rDate).toISOString().split('T')[0] : "",
+                prLabel: report.prLabel || `PR${idx + 1}`,
+                prDate: report.prDate ? new Date(report.prDate).toISOString().split('T')[0] : "",
+                file: report.file || null,
+              }));
+            }
+
+            const legacySources = [
+              { rLabel: "R1", rDate: reportsData.r1, prLabel: "PR1", prDate: reportsData.pr1 },
+              { rLabel: "R2", rDate: reportsData.r2, prLabel: "PR2", prDate: reportsData.pr2 },
+              { rLabel: "R3", rDate: reportsData.r3, prLabel: "PR3", prDate: reportsData.pr3 },
+            ];
+
+            return legacySources
+              .filter(({ rDate, prDate }) => rDate || prDate)
+              .map(({ rLabel, rDate, prLabel, prDate }, idx) => ({
+                rLabel: rLabel || `R${idx + 1}`,
+                rDate: rDate ? new Date(rDate).toISOString().split('T')[0] : "",
+                prLabel: prLabel || `PR${idx + 1}`,
+                prDate: prDate ? new Date(prDate).toISOString().split('T')[0] : "",
+                file: null,
+              }));
+          })(),
           supervision: caseData.reports?.supervision ? new Date(caseData.reports.supervision).toISOString().split('T')[0] : "",
-          r2: caseData.reports?.r2 ? new Date(caseData.reports.r2).toISOString().split('T')[0] : "",
-          r3: caseData.reports?.r3 ? new Date(caseData.reports.r3).toISOString().split('T')[0] : "",
-          pr1: caseData.reports?.pr1 ? new Date(caseData.reports.pr1).toISOString().split('T')[0] : "",
-          pr2: caseData.reports?.pr2 ? new Date(caseData.reports.pr2).toISOString().split('T')[0] : "",
-          pr3: caseData.reports?.pr3 ? new Date(caseData.reports.pr3).toISOString().split('T')[0] : "",
           fpr: caseData.reports?.fpr ? new Date(caseData.reports.fpr).toISOString().split('T')[0] : "",
           finalOrder: caseData.reports?.finalOrder ? new Date(caseData.reports.finalOrder).toISOString().split('T')[0] : "",
           finalChargesheet: caseData.reports?.finalChargesheet ? new Date(caseData.reports.finalChargesheet).toISOString().split('T')[0] : "",
@@ -252,6 +277,7 @@ export default function CaseDetail() {
         })),
         injuryReport: {
           report: caseData.injuryReport?.report || false,
+          injuryType: caseData.injuryReport?.injuryType || "",
           injuryDate: caseData.injuryReport?.injuryDate ? new Date(caseData.injuryReport.injuryDate).toISOString().split('T')[0] : "",
           reportReceived: caseData.injuryReport?.reportReceived || false,
           reportDate: caseData.injuryReport?.reportDate ? new Date(caseData.injuryReport.reportDate).toISOString().split('T')[0] : "",
@@ -270,6 +296,9 @@ export default function CaseDetail() {
         accused: (caseData.accused || []).map((acc: any) => ({
           name: acc.name || "",
           status: acc.status || "Decision pending",
+          address: acc.address || "",
+          mobileNumber: acc.mobileNumber || "",
+          aadhaarNumber: acc.aadhaarNumber || "",
           arrestedDate: acc.arrestedDate ? new Date(acc.arrestedDate).toISOString().split('T')[0] : "",
           arrestedOn: acc.arrestedOn ? new Date(acc.arrestedOn).toISOString().split('T')[0] : "",
           notice41A: acc.notice41A ? {
@@ -319,6 +348,9 @@ export default function CaseDetail() {
     return caseData.accused.map((acc: any) => ({
       name: acc.name || "",
       status: (acc.status || "Decision Pending") as AccusedStatus,
+      address: acc.address || "",
+      mobileNumber: acc.mobileNumber || "",
+      aadhaarNumber: acc.aadhaarNumber || "",
       arrestedOn: acc.arrestedDate || acc.arrestedOn,
       notice41A: acc.notice41A ? {
         issued: acc.notice41A.issued || false,
@@ -349,6 +381,39 @@ export default function CaseDetail() {
       } : undefined,
     }));
   }, [caseData]);
+
+  const spReports = useMemo<
+    Array<{ rLabel: string; rDate: string; prLabel: string; prDate: string; file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null }>
+  >(() => {
+    const reportsData = caseData?.reports;
+    if (!reportsData) return [];
+
+    if (Array.isArray(reportsData.spReports) && reportsData.spReports.length > 0) {
+      return reportsData.spReports.map((report: any, idx: number) => ({
+        rLabel: report.rLabel || `R${idx + 1}`,
+        rDate: report.rDate || "",
+        prLabel: report.prLabel || `PR${idx + 1}`,
+        prDate: report.prDate || "",
+        file: report.file || null,
+      }));
+    }
+
+    const legacySources = [
+      { rLabel: "R1", rDate: reportsData.r1, prLabel: "PR1", prDate: reportsData.pr1 },
+      { rLabel: "R2", rDate: reportsData.r2, prLabel: "PR2", prDate: reportsData.pr2 },
+      { rLabel: "R3", rDate: reportsData.r3, prLabel: "PR3", prDate: reportsData.pr3 },
+    ];
+
+    return legacySources
+      .filter(({ rDate, prDate }) => rDate || prDate)
+      .map(({ rLabel, rDate, prLabel, prDate }, idx) => ({
+        rLabel: rLabel || `R${idx + 1}`,
+        rDate: rDate || "",
+        prLabel: prLabel || `PR${idx + 1}`,
+        prDate: prDate || "",
+        file: null,
+      }));
+  }, [caseData?.reports]);
 
   // Calculate days passed after arrest
   const getDaysAfterArrest = (arrestedOn?: string) => {
@@ -522,7 +587,7 @@ export default function CaseDetail() {
                   value={`${accused.filter(a => a.warrant?.prayed).length} prayed`} 
                 />
                 <ProgressRow 
-                  label="Charge Sheet" 
+                  label="Chargesheet submitted in Court" 
                   value={summary.finalChargesheetSubmitted ? "Submitted" : "Pending"} 
                 />
               </Card>
@@ -537,6 +602,9 @@ export default function CaseDetail() {
                     <tr>
                       <th className="px-4 py-2 text-left font-medium">Name</th>
                       <th className="px-4 py-2 text-left font-medium">Status</th>
+                      <th className="px-4 py-2 text-left font-medium">Address</th>
+                      <th className="px-4 py-2 text-left font-medium">Mobile Number</th>
+                      <th className="px-4 py-2 text-left font-medium">Aadhaar Number</th>
                       <th className="px-4 py-2 text-left font-medium">Arrest Date</th>
                       <th className="px-4 py-2 text-left font-medium">Days After Arrest</th>
                       <th className="px-4 py-2 text-left font-medium">Charge Sheet Alert</th>
@@ -558,6 +626,9 @@ export default function CaseDetail() {
                               <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-orange-100 text-orange-800 ring-orange-600/20">Not Arrested</span>
                             )}
                           </td>
+                          <td className="px-4 py-2">{a.address || "—"}</td>
+                          <td className="px-4 py-2">{a.mobileNumber || "—"}</td>
+                          <td className="px-4 py-2">{a.aadhaarNumber || "—"}</td>
                           <td className="px-4 py-2">{a.arrestedOn || "—"}</td>
                           <td className="px-4 py-2">
                             {daysAfterArrest !== null ? (
@@ -648,16 +719,32 @@ export default function CaseDetail() {
 
           {activeTab === "prosecution" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card title="Charge Sheet">
-                <FieldRow label="Submitted" value={caseData?.chargeSheet?.submitted ? "Yes" : "No"} />
+            <Card title="Chargesheet submitted in VO">
+              <FieldRow label="Chargesheet submitted in VO" value={caseData?.chargeSheet?.submitted ? "Yes" : "No"} />
                 {caseData?.chargeSheet?.submitted && caseData?.chargeSheet?.submissionDate && (
-                  <FieldRow label="Date of Submission" value={new Date(caseData.chargeSheet.submissionDate).toLocaleDateString()} />
+                <FieldRow label="Date of Submission (VO)" value={new Date(caseData.chargeSheet.submissionDate).toLocaleDateString()} />
+                )}
+                {caseData?.chargeSheet?.file && (
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Chargesheet File</label>
+                    <a
+                      href={caseData.chargeSheet.file.secure_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {caseData.chargeSheet.file.original_filename || "View File"}
+                    </a>
+                  </div>
                 )}
               </Card>
-              <Card title="Final Charge Sheet Submission in Court">
-                <FieldRow label="Submitted" value={summary.finalChargesheetSubmitted ? "Yes" : "No"} />
+            <Card title="Chargesheet submitted in Court">
+              <FieldRow label="Chargesheet submitted in Court" value={summary.finalChargesheetSubmitted ? "Yes" : "No"} />
                 {summary.finalChargesheetSubmitted && summary.finalChargesheetSubmissionDate && (
-                  <FieldRow label="Date of Submission" value={new Date(summary.finalChargesheetSubmissionDate).toLocaleDateString()} />
+                <FieldRow label="Date of Submission (Court)" value={new Date(summary.finalChargesheetSubmissionDate).toLocaleDateString()} />
                 )}
               </Card>
               <Card title="Prosecution Sanction">
@@ -672,6 +759,22 @@ export default function CaseDetail() {
                         )}
                         {sanction.receiptDate && (
                           <FieldRow label="Date of Receipt" value={new Date(sanction.receiptDate).toLocaleDateString()} />
+                        )}
+                        {sanction.file && (
+                          <div className="mt-2 pt-2 border-t border-slate-200">
+                            <label className="block text-xs font-medium text-slate-700 mb-1">File</label>
+                            <a
+                              href={sanction.file.secure_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              {sanction.file.original_filename || "View File"}
+                            </a>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -702,6 +805,22 @@ export default function CaseDetail() {
                         {fslEntry.reportDate && (
                           <FieldRow label="Date of Report" value={new Date(fslEntry.reportDate).toLocaleDateString()} />
                         )}
+                        {fslEntry.file && (
+                          <div className="mt-2 pt-2 border-t border-slate-200">
+                            <label className="block text-xs font-medium text-slate-700 mb-1">File</label>
+                            <a
+                              href={fslEntry.file.secure_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              {fslEntry.file.original_filename || "View File"}
+                            </a>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -715,13 +834,30 @@ export default function CaseDetail() {
           {activeTab === "victim" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="Injury Report">
-                <FieldRow label="Injury Report" value={caseData?.injuryReport?.report ? "Yes" : "No"} />
+                <FieldRow label="Report Required" value={caseData?.injuryReport?.report ? "Yes" : "No"} />
+                <FieldRow label="Injury Type" value={caseData?.injuryReport?.injuryType || "—"} />
                 {caseData?.injuryReport && (
                   <>
                     <FieldRow label="Date of Injury" value={caseData.injuryReport.injuryDate ? new Date(caseData.injuryReport.injuryDate).toLocaleDateString() : "—"} />
                     <FieldRow label="Report Received" value={caseData.injuryReport.reportReceived ? "Yes" : "No"} />
                     <FieldRow label="Date of Report" value={caseData.injuryReport.reportDate ? new Date(caseData.injuryReport.reportDate).toLocaleDateString() : "—"} />
                   </>
+                )}
+                {caseData?.injuryReport?.file && (
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Injury Report File</label>
+                    <a
+                      href={caseData.injuryReport.file.secure_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {caseData.injuryReport.file.original_filename || "View File"}
+                    </a>
+                  </div>
                 )}
               </Card>
               <Card title="PM Report (Post Mortem)">
@@ -732,6 +868,22 @@ export default function CaseDetail() {
                     <FieldRow label="Report Received" value={caseData.pmReport.reportReceived ? "Yes" : "No"} />
                     <FieldRow label="Date of Report" value={caseData.pmReport.reportDate ? new Date(caseData.pmReport.reportDate).toLocaleDateString() : "—"} />
                   </>
+                )}
+                {caseData?.pmReport?.file && (
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">PM Report File</label>
+                    <a
+                      href={caseData.pmReport.file.secure_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {caseData.pmReport.file.original_filename || "View File"}
+                    </a>
+                  </div>
                 )}
               </Card>
               <Card title="Compensation Proposal">
@@ -749,16 +901,78 @@ export default function CaseDetail() {
           {activeTab === "reports" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="Internal Reports">
-                <FieldRow label="R1" value={caseData?.reports?.r1 ? new Date(caseData.reports.r1).toLocaleDateString() : "—"} />
-                <FieldRow label="Supervision" value={caseData?.reports?.supervision ? new Date(caseData.reports.supervision).toLocaleDateString() : "—"} />
-                <FieldRow label="R2" value={caseData?.reports?.r2 ? new Date(caseData.reports.r2).toLocaleDateString() : "—"} />
-                <FieldRow label="R3" value={caseData?.reports?.r3 ? new Date(caseData.reports.r3).toLocaleDateString() : "—"} />
-                <FieldRow label="PR1 (DSP)" value={caseData?.reports?.pr1 ? new Date(caseData.reports.pr1).toLocaleDateString() : "—"} />
-                <FieldRow label="PR2 (DSP)" value={caseData?.reports?.pr2 ? new Date(caseData.reports.pr2).toLocaleDateString() : "—"} />
-                <FieldRow label="PR3 (DSP)" value={caseData?.reports?.pr3 ? new Date(caseData.reports.pr3).toLocaleDateString() : "—"} />
-                <FieldRow label="FPR" value={caseData?.reports?.fpr ? new Date(caseData.reports.fpr).toLocaleDateString() : "—"} />
-                <FieldRow label="Final Order" value={caseData?.reports?.finalOrder ? new Date(caseData.reports.finalOrder).toLocaleDateString() : "—"} />
-                <FieldRow label="Final Chargesheet" value={caseData?.reports?.finalChargesheet ? new Date(caseData.reports.finalChargesheet).toLocaleDateString() : "—"} />
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">SP / DSP Reports</span>
+                    {spReports.length === 0 ? (
+                      <p className="mt-2 text-sm text-slate-500">No SP / DSP reports recorded.</p>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        {spReports.map((report, index) => (
+                          <div key={index} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                            <div className="flex items-center justify-between text-xs font-medium text-slate-700">
+                              <span>{report.rLabel || `R${index + 1}`}</span>
+                              <span>{report.rDate ? formatDate(report.rDate) : "—"}</span>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-xs text-slate-600">
+                              <span>{report.prLabel || `PR${index + 1}`}</span>
+                              <span>{report.prDate ? formatDate(report.prDate) : "—"}</span>
+                            </div>
+                            {report.file && (
+                              <div className="mt-2 pt-2 border-t border-slate-200">
+                                <a
+                                  href={report.file.secure_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  {report.file.original_filename || "View File"}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <FieldRow
+                      label="Supervision"
+                      value={caseData?.reports?.supervision ? new Date(caseData.reports.supervision).toLocaleDateString() : "—"}
+                    />
+                    <FieldRow
+                      label="FPR"
+                      value={caseData?.reports?.fpr ? new Date(caseData.reports.fpr).toLocaleDateString() : "—"}
+                    />
+                    <FieldRow
+                      label="Final Order"
+                      value={caseData?.reports?.finalOrder ? new Date(caseData.reports.finalOrder).toLocaleDateString() : "—"}
+                    />
+                    <FieldRow
+                      label="Final Chargesheet"
+                      value={caseData?.reports?.finalChargesheet ? new Date(caseData.reports.finalChargesheet).toLocaleDateString() : "—"}
+                    />
+                  </div>
+                  {caseData?.reports?.file && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      <label className="block text-xs font-medium text-slate-700 mb-2">All Reports File</label>
+                      <a
+                        href={caseData.reports.file.secure_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {caseData.reports.file.original_filename || "View File"}
+                      </a>
+                    </div>
+                  )}
+                </div>
               </Card>
               <Card title="Reasons for Pendency">
                 <div className="space-y-4">
@@ -802,6 +1016,24 @@ export default function CaseDetail() {
 
           {activeTab === "petition" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {caseData?.publicPetitionFile && (
+                <Card title="Public Petition File">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">File</label>
+                    <a
+                      href={caseData.publicPetitionFile.secure_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {caseData.publicPetitionFile.original_filename || "View File"}
+                    </a>
+                  </div>
+                </Card>
+              )}
               <Card title="Petition">
                 <FieldRow label="Petition" value={summary.petition ? "Yes" : "No"} />
               </Card>

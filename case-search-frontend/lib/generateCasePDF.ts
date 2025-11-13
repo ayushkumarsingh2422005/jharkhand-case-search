@@ -17,13 +17,13 @@ interface CaseData {
   reasonForPendency: string[];
   diary: Array<{ diaryNo: string; diaryDate: string }>;
   reports: {
-    r1: string;
+    spReports: Array<{
+      rLabel: string;
+      rDate: string;
+      prLabel: string;
+      prDate: string;
+    }>;
     supervision: string;
-    r2: string;
-    r3: string;
-    pr1: string;
-    pr2: string;
-    pr3: string;
     fpr: string;
     finalOrder: string;
     finalChargesheet: string;
@@ -51,6 +51,7 @@ interface CaseData {
   }>;
   injuryReport: {
     report: boolean;
+    injuryType: string;
     injuryDate: string;
     reportReceived: boolean;
     reportDate: string;
@@ -69,6 +70,9 @@ interface CaseData {
   accused: Array<{
     name: string;
     status: string;
+    address?: string;
+    mobileNumber?: string;
+    aadhaarNumber?: string;
     arrestedDate?: string;
     arrestedOn?: string;
     notice41A?: {
@@ -260,6 +264,15 @@ export const generateCasePDF = (caseData: CaseData) => {
       yPosition += 7;
       addKeyValue('Name', accused.name, 10);
       addKeyValue('Status', accused.status, 10);
+      if (accused.address && String(accused.address).trim() !== '') {
+        addKeyValue('Address', accused.address, 10);
+      }
+      if (accused.mobileNumber && String(accused.mobileNumber).trim() !== '') {
+        addKeyValue('Mobile Number', accused.mobileNumber, 10);
+      }
+      if (accused.aadhaarNumber && String(accused.aadhaarNumber).trim() !== '') {
+        addKeyValue('Aadhaar Number', accused.aadhaarNumber, 10);
+      }
       if (accused.arrestedDate && String(accused.arrestedDate).trim() !== '') {
         addKeyValue('Arrested Date', formatDate(String(accused.arrestedDate)), 10);
       }
@@ -356,30 +369,52 @@ export const generateCasePDF = (caseData: CaseData) => {
   }
 
   // Reports Section
-  const hasReports = Object.values(caseData.reports).some(date => date && date.trim() !== '');
+  const spReports = caseData.reports.spReports || [];
+  const hasReports =
+    spReports.some(report => report.rLabel || report.rDate || report.prLabel || report.prDate) ||
+    [caseData.reports.supervision, caseData.reports.fpr, caseData.reports.finalOrder, caseData.reports.finalChargesheet]
+      .some(value => typeof value === 'string' && value.trim() !== '');
+
   if (hasReports) {
     addSectionHeader('Reports');
-    if (caseData.reports.r1 && caseData.reports.r1.trim() !== '') addKeyValue('R1 Date', formatDate(caseData.reports.r1));
+    if (spReports.length > 0) {
+      spReports.forEach((report, index) => {
+        checkNewPage();
+        yPosition += 3;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Report ${index + 1}:`, margin + 5, yPosition);
+        yPosition += 7;
+        if (report.rLabel && String(report.rLabel).trim() !== '') {
+          addKeyValue('R Label', report.rLabel, 10);
+        }
+        if (report.rDate && String(report.rDate).trim() !== '') {
+          addKeyValue('R Date', formatDate(String(report.rDate)), 10);
+        }
+        if (report.prLabel && String(report.prLabel).trim() !== '') {
+          addKeyValue('PR Label', report.prLabel, 10);
+        }
+        if (report.prDate && String(report.prDate).trim() !== '') {
+          addKeyValue('PR Date', formatDate(String(report.prDate)), 10);
+        }
+        yPosition += 2;
+      });
+    }
     if (caseData.reports.supervision && caseData.reports.supervision.trim() !== '') addKeyValue('Supervision Date', formatDate(caseData.reports.supervision));
-    if (caseData.reports.r2 && caseData.reports.r2.trim() !== '') addKeyValue('R2 Date', formatDate(caseData.reports.r2));
-    if (caseData.reports.r3 && caseData.reports.r3.trim() !== '') addKeyValue('R3 Date', formatDate(caseData.reports.r3));
-    if (caseData.reports.pr1 && caseData.reports.pr1.trim() !== '') addKeyValue('PR1 Date', formatDate(caseData.reports.pr1));
-    if (caseData.reports.pr2 && caseData.reports.pr2.trim() !== '') addKeyValue('PR2 Date', formatDate(caseData.reports.pr2));
-    if (caseData.reports.pr3 && caseData.reports.pr3.trim() !== '') addKeyValue('PR3 Date', formatDate(caseData.reports.pr3));
     if (caseData.reports.fpr && caseData.reports.fpr.trim() !== '') addKeyValue('FPR Date', formatDate(caseData.reports.fpr));
     if (caseData.reports.finalOrder && caseData.reports.finalOrder.trim() !== '') addKeyValue('Final Order Date', formatDate(caseData.reports.finalOrder));
     if (caseData.reports.finalChargesheet && caseData.reports.finalChargesheet.trim() !== '') addKeyValue('Final Chargesheet Date', formatDate(caseData.reports.finalChargesheet));
   }
 
-  // Charge Sheet Section
-  addSectionHeader('Charge Sheet');
-  addKeyValue('Charge Sheet Submitted', caseData.chargeSheet.submitted ? 'Yes' : 'No');
+  // Chargesheet submitted in VO Section
+  addSectionHeader('Chargesheet submitted in VO');
+  addKeyValue('Chargesheet submitted in VO', caseData.chargeSheet.submitted ? 'Yes' : 'No');
   if (caseData.chargeSheet.submissionDate && caseData.chargeSheet.submissionDate.trim() !== '') {
-    addKeyValue('Submission Date', formatDate(caseData.chargeSheet.submissionDate));
+    addKeyValue('Submission Date (VO)', formatDate(caseData.chargeSheet.submissionDate));
   }
-  addKeyValue('Final Chargesheet Submitted', caseData.finalChargesheetSubmitted ? 'Yes' : 'No');
+  addKeyValue('Chargesheet submitted in Court', caseData.finalChargesheetSubmitted ? 'Yes' : 'No');
   if (caseData.finalChargesheetSubmissionDate && caseData.finalChargesheetSubmissionDate.trim() !== '') {
-    addKeyValue('Final Chargesheet Submission Date', formatDate(caseData.finalChargesheetSubmissionDate));
+    addKeyValue('Submission Date (Court)', formatDate(caseData.finalChargesheetSubmissionDate));
   }
 
   // Prosecution Sanction
@@ -437,7 +472,10 @@ export const generateCasePDF = (caseData: CaseData) => {
 
   // Injury Report Section
   addSectionHeader('Injury Report');
-  addKeyValue('Report Available', caseData.injuryReport.report ? 'Yes' : 'No');
+  addKeyValue('Report Required', caseData.injuryReport.report ? 'Yes' : 'No');
+  if (caseData.injuryReport.injuryType && caseData.injuryReport.injuryType.trim() !== '') {
+    addKeyValue('Injury Type', caseData.injuryReport.injuryType, 0);
+  }
   if (caseData.injuryReport.injuryDate && caseData.injuryReport.injuryDate.trim() !== '') {
     addKeyValue('Injury Date', formatDate(caseData.injuryReport.injuryDate));
   }

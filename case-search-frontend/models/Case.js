@@ -48,6 +48,15 @@ const AccusedSchema = new mongoose.Schema({
     enum: ['Arrested', 'Not arrested', 'Decision pending', 'Not Arrested', 'True', 'False', 'Decision Pending'],
     required: true,
   },
+  address: {
+    type: String,
+  },
+  mobileNumber: {
+    type: String,
+  },
+  aadhaarNumber: {
+    type: String,
+  },
   arrestedDate: {
     type: Date,
   },
@@ -68,27 +77,40 @@ const AccusedSchema = new mongoose.Schema({
   },
 }, { _id: true });
 
+// Schema for SP/DSP report pairs
+const SPReportPairSchema = new mongoose.Schema({
+  rLabel: {
+    type: String,
+    default: '',
+  },
+  rDate: {
+    type: Date,
+  },
+  prLabel: {
+    type: String,
+    default: '',
+  },
+  prDate: {
+    type: Date,
+  },
+  // File upload for individual SP/DSP report pair
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
+  },
+}, { _id: false });
+
 // Schema for Reports
 const ReportInfoSchema = new mongoose.Schema({
-  r1: {
-    type: Date,
+  spReports: {
+    type: [SPReportPairSchema],
+    default: [],
   },
   supervision: {
-    type: Date,
-  },
-  r2: {
-    type: Date,
-  },
-  r3: {
-    type: Date,
-  },
-  pr1: {
-    type: Date,
-  },
-  pr2: {
-    type: Date,
-  },
-  pr3: {
     type: Date,
   },
   fpr: {
@@ -100,6 +122,15 @@ const ReportInfoSchema = new mongoose.Schema({
   finalChargesheet: {
     type: Date,
   },
+  // File upload for all reports
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
+  },
 }, { _id: false });
 
 // Schema for Charge Sheet
@@ -110,6 +141,15 @@ const ChargeSheetSchema = new mongoose.Schema({
   },
   submissionDate: {
     type: Date,
+  },
+  // File upload for chargesheet
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
   },
 }, { _id: false });
 
@@ -124,6 +164,15 @@ const ProsecutionSanctionSchema = new mongoose.Schema({
   },
   receiptDate: {
     type: Date,
+  },
+  // File upload for prosecution sanction
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
   },
 }, { _id: true });
 
@@ -156,6 +205,15 @@ const FSLSchema = new mongoose.Schema({
   reportDate: {
     type: Date,
   },
+  // File upload for FSL
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
+  },
 }, { _id: false });
 
 // Schema for Injury Report
@@ -163,6 +221,9 @@ const InjuryReportSchema = new mongoose.Schema({
   report: {
     type: Boolean,
     default: false,
+  },
+  injuryType: {
+    type: String,
   },
   injuryDate: {
     type: Date,
@@ -173,6 +234,15 @@ const InjuryReportSchema = new mongoose.Schema({
   },
   reportDate: {
     type: Date,
+  },
+  // File upload for injury report
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
   },
 }, { _id: false });
 
@@ -191,6 +261,15 @@ const PMReportSchema = new mongoose.Schema({
   },
   reportDate: {
     type: Date,
+  },
+  // File upload for PM report
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
   },
 }, { _id: false });
 
@@ -272,6 +351,15 @@ const CaseSchema = new mongoose.Schema({
   petition: {
     type: Boolean,
     default: false,
+  },
+  // File upload for public petition
+  publicPetitionFile: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
   },
   reasonForPendency: [{
     type: String,

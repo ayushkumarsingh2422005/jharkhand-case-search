@@ -15,6 +15,21 @@ type Accused = {
 };
 
 
+type SPReportPair = {
+  rLabel?: string;
+  rDate?: string;
+  prLabel?: string;
+  prDate?: string;
+  file?: {
+    public_id?: string;
+    secure_url?: string;
+    url?: string;
+    original_filename?: string;
+    format?: string;
+    bytes?: number;
+  };
+};
+
 type ReportInfo = {
   r1?: string;
   supervision?: string;
@@ -26,6 +41,7 @@ type ReportInfo = {
   fpr?: string;
   finalOrder?: string;
   finalChargesheet?: string;
+  spReports?: SPReportPair[];
 };
 
 type CaseRow = {
@@ -810,107 +826,131 @@ export default function Home() {
         }
 
         // Report filters
+        const reportsData = row.reports || {};
+        const spReportsList = Array.isArray(reportsData.spReports) ? reportsData.spReports : [];
+        const ensureReportPair = (idx: number) => {
+          if (spReportsList[idx]) {
+            return {
+              rLabel: spReportsList[idx].rLabel || `R${idx + 1}`,
+              rDate: spReportsList[idx].rDate || "",
+              prLabel: spReportsList[idx].prLabel || `PR${idx + 1}`,
+              prDate: spReportsList[idx].prDate || "",
+            };
+          }
+          const legacyR = (reportsData as any)[`r${idx + 1}`];
+          const legacyPR = (reportsData as any)[`pr${idx + 1}`];
+          if (!legacyR && !legacyPR) return null;
+          return {
+            rLabel: `R${idx + 1}`,
+            rDate: legacyR || "",
+            prLabel: `PR${idx + 1}`,
+            prDate: legacyPR || "",
+          };
+        };
+
+        const reportPairs = [ensureReportPair(0), ensureReportPair(1), ensureReportPair(2)];
+        const [r1Pair, r2Pair, r3Pair] = reportPairs;
+        const r1Date = r1Pair?.rDate || "";
+        const r2Date = r2Pair?.rDate || "";
+        const r3Date = r3Pair?.rDate || "";
+        const pr1Date = r1Pair?.prDate || "";
+        const pr2Date = r2Pair?.prDate || "";
+        const pr3Date = r3Pair?.prDate || "";
+
         if (filters.reportR1) {
-          const hasR1 = filters.reportR1 === "Yes" ? !!row.reports?.r1 : !row.reports?.r1;
+          const hasR1 = filters.reportR1 === "Yes" ? !!r1Date : !r1Date;
           if (!hasR1) return null;
         }
-        if (filters.reportR1DateFrom && (!row.reports?.r1 || new Date(row.reports.r1) < new Date(filters.reportR1DateFrom))) return null;
-        if (filters.reportR1DateTo && (!row.reports?.r1 || new Date(row.reports.r1) > new Date(filters.reportR1DateTo))) return null;
-        // R1 issued more than X months ago
+        if (filters.reportR1DateFrom && (!r1Date || new Date(r1Date) < new Date(filters.reportR1DateFrom))) return null;
+        if (filters.reportR1DateTo && (!r1Date || new Date(r1Date) > new Date(filters.reportR1DateTo))) return null;
         if (filters.reportR1IssuedMonthsAgo) {
-          if (!row.reports?.r1) return null;
+          if (!r1Date) return null;
           const monthsAgo = Number(filters.reportR1IssuedMonthsAgo);
-          const r1Date = new Date(row.reports.r1);
+          const r1DateObj = new Date(r1Date);
           const today = new Date();
-          const diffMonths = (today.getFullYear() - r1Date.getFullYear()) * 12 + (today.getMonth() - r1Date.getMonth());
+          const diffMonths = (today.getFullYear() - r1DateObj.getFullYear()) * 12 + (today.getMonth() - r1DateObj.getMonth());
           if (diffMonths < monthsAgo) return null;
         }
 
         if (filters.reportSupervision) {
-          const hasSupervision = filters.reportSupervision === "Yes" ? !!row.reports?.supervision : !row.reports?.supervision;
+          const hasSupervision = filters.reportSupervision === "Yes" ? !!reportsData.supervision : !reportsData.supervision;
           if (!hasSupervision) return null;
         }
-        if (filters.reportSupervisionDateFrom && (!row.reports?.supervision || new Date(row.reports.supervision) < new Date(filters.reportSupervisionDateFrom))) return null;
-        if (filters.reportSupervisionDateTo && (!row.reports?.supervision || new Date(row.reports.supervision) > new Date(filters.reportSupervisionDateTo))) return null;
+        if (filters.reportSupervisionDateFrom && (!reportsData.supervision || new Date(reportsData.supervision) < new Date(filters.reportSupervisionDateFrom))) return null;
+        if (filters.reportSupervisionDateTo && (!reportsData.supervision || new Date(reportsData.supervision) > new Date(filters.reportSupervisionDateTo))) return null;
 
         if (filters.reportR2) {
-          const hasR2 = filters.reportR2 === "Yes" ? !!row.reports?.r2 : !row.reports?.r2;
+          const hasR2 = filters.reportR2 === "Yes" ? !!r2Date : !r2Date;
           if (!hasR2) return null;
         }
-        if (filters.reportR2DateFrom && (!row.reports?.r2 || new Date(row.reports.r2) < new Date(filters.reportR2DateFrom))) return null;
-        if (filters.reportR2DateTo && (!row.reports?.r2 || new Date(row.reports.r2) > new Date(filters.reportR2DateTo))) return null;
-        // R2 issued more than X months ago
+        if (filters.reportR2DateFrom && (!r2Date || new Date(r2Date) < new Date(filters.reportR2DateFrom))) return null;
+        if (filters.reportR2DateTo && (!r2Date || new Date(r2Date) > new Date(filters.reportR2DateTo))) return null;
         if (filters.reportR2IssuedMonthsAgo) {
-          if (!row.reports?.r2) return null;
+          if (!r2Date) return null;
           const monthsAgo = Number(filters.reportR2IssuedMonthsAgo);
-          const r2Date = new Date(row.reports.r2);
+          const r2DateObj = new Date(r2Date);
           const today = new Date();
-          const diffMonths = (today.getFullYear() - r2Date.getFullYear()) * 12 + (today.getMonth() - r2Date.getMonth());
+          const diffMonths = (today.getFullYear() - r2DateObj.getFullYear()) * 12 + (today.getMonth() - r2DateObj.getMonth());
           if (diffMonths < monthsAgo) return null;
         }
 
         if (filters.reportR3) {
-          const hasR3 = filters.reportR3 === "Yes" ? !!row.reports?.r3 : !row.reports?.r3;
+          const hasR3 = filters.reportR3 === "Yes" ? !!r3Date : !r3Date;
           if (!hasR3) return null;
         }
-        if (filters.reportR3DateFrom && (!row.reports?.r3 || new Date(row.reports.r3) < new Date(filters.reportR3DateFrom))) return null;
-        if (filters.reportR3DateTo && (!row.reports?.r3 || new Date(row.reports.r3) > new Date(filters.reportR3DateTo))) return null;
-        // R3 issued more than X months ago
+        if (filters.reportR3DateFrom && (!r3Date || new Date(r3Date) < new Date(filters.reportR3DateFrom))) return null;
+        if (filters.reportR3DateTo && (!r3Date || new Date(r3Date) > new Date(filters.reportR3DateTo))) return null;
         if (filters.reportR3IssuedMonthsAgo) {
-          if (!row.reports?.r3) return null;
+          if (!r3Date) return null;
           const monthsAgo = Number(filters.reportR3IssuedMonthsAgo);
-          const r3Date = new Date(row.reports.r3);
+          const r3DateObj = new Date(r3Date);
           const today = new Date();
-          const diffMonths = (today.getFullYear() - r3Date.getFullYear()) * 12 + (today.getMonth() - r3Date.getMonth());
+          const diffMonths = (today.getFullYear() - r3DateObj.getFullYear()) * 12 + (today.getMonth() - r3DateObj.getMonth());
           if (diffMonths < monthsAgo) return null;
         }
 
-        // PR1, PR2, PR3 reports
         if (filters.reportPR1) {
-          const hasPR1 = filters.reportPR1 === "Yes" ? !!row.reports?.pr1 : !row.reports?.pr1;
+          const hasPR1 = filters.reportPR1 === "Yes" ? !!pr1Date : !pr1Date;
           if (!hasPR1) return null;
         }
-        if (filters.reportPR1DateFrom && (!row.reports?.pr1 || new Date(row.reports.pr1) < new Date(filters.reportPR1DateFrom))) return null;
-        if (filters.reportPR1DateTo && (!row.reports?.pr1 || new Date(row.reports.pr1) > new Date(filters.reportPR1DateTo))) return null;
-        // PR1 issued more than X months ago
+        if (filters.reportPR1DateFrom && (!pr1Date || new Date(pr1Date) < new Date(filters.reportPR1DateFrom))) return null;
+        if (filters.reportPR1DateTo && (!pr1Date || new Date(pr1Date) > new Date(filters.reportPR1DateTo))) return null;
         if (filters.reportPR1IssuedMonthsAgo) {
-          if (!row.reports?.pr1) return null;
+          if (!pr1Date) return null;
           const monthsAgo = Number(filters.reportPR1IssuedMonthsAgo);
-          const pr1Date = new Date(row.reports.pr1);
+          const pr1DateObj = new Date(pr1Date);
           const today = new Date();
-          const diffMonths = (today.getFullYear() - pr1Date.getFullYear()) * 12 + (today.getMonth() - pr1Date.getMonth());
+          const diffMonths = (today.getFullYear() - pr1DateObj.getFullYear()) * 12 + (today.getMonth() - pr1DateObj.getMonth());
           if (diffMonths < monthsAgo) return null;
         }
 
         if (filters.reportPR2) {
-          const hasPR2 = filters.reportPR2 === "Yes" ? !!row.reports?.pr2 : !row.reports?.pr2;
+          const hasPR2 = filters.reportPR2 === "Yes" ? !!pr2Date : !pr2Date;
           if (!hasPR2) return null;
         }
-        if (filters.reportPR2DateFrom && (!row.reports?.pr2 || new Date(row.reports.pr2) < new Date(filters.reportPR2DateFrom))) return null;
-        if (filters.reportPR2DateTo && (!row.reports?.pr2 || new Date(row.reports.pr2) > new Date(filters.reportPR2DateTo))) return null;
-        // PR2 issued more than X months ago
+        if (filters.reportPR2DateFrom && (!pr2Date || new Date(pr2Date) < new Date(filters.reportPR2DateFrom))) return null;
+        if (filters.reportPR2DateTo && (!pr2Date || new Date(pr2Date) > new Date(filters.reportPR2DateTo))) return null;
         if (filters.reportPR2IssuedMonthsAgo) {
-          if (!row.reports?.pr2) return null;
+          if (!pr2Date) return null;
           const monthsAgo = Number(filters.reportPR2IssuedMonthsAgo);
-          const pr2Date = new Date(row.reports.pr2);
+          const pr2DateObj = new Date(pr2Date);
           const today = new Date();
-          const diffMonths = (today.getFullYear() - pr2Date.getFullYear()) * 12 + (today.getMonth() - pr2Date.getMonth());
+          const diffMonths = (today.getFullYear() - pr2DateObj.getFullYear()) * 12 + (today.getMonth() - pr2DateObj.getMonth());
           if (diffMonths < monthsAgo) return null;
         }
 
         if (filters.reportPR3) {
-          const hasPR3 = filters.reportPR3 === "Yes" ? !!row.reports?.pr3 : !row.reports?.pr3;
+          const hasPR3 = filters.reportPR3 === "Yes" ? !!pr3Date : !pr3Date;
           if (!hasPR3) return null;
         }
-        if (filters.reportPR3DateFrom && (!row.reports?.pr3 || new Date(row.reports.pr3) < new Date(filters.reportPR3DateFrom))) return null;
-        if (filters.reportPR3DateTo && (!row.reports?.pr3 || new Date(row.reports.pr3) > new Date(filters.reportPR3DateTo))) return null;
-        // PR3 issued more than X months ago
+        if (filters.reportPR3DateFrom && (!pr3Date || new Date(pr3Date) < new Date(filters.reportPR3DateFrom))) return null;
+        if (filters.reportPR3DateTo && (!pr3Date || new Date(pr3Date) > new Date(filters.reportPR3DateTo))) return null;
         if (filters.reportPR3IssuedMonthsAgo) {
-          if (!row.reports?.pr3) return null;
+          if (!pr3Date) return null;
           const monthsAgo = Number(filters.reportPR3IssuedMonthsAgo);
-          const pr3Date = new Date(row.reports.pr3);
+          const pr3DateObj = new Date(pr3Date);
           const today = new Date();
-          const diffMonths = (today.getFullYear() - pr3Date.getFullYear()) * 12 + (today.getMonth() - pr3Date.getMonth());
+          const diffMonths = (today.getFullYear() - pr3DateObj.getFullYear()) * 12 + (today.getMonth() - pr3DateObj.getMonth());
           if (diffMonths < monthsAgo) return null;
         }
 
@@ -1858,9 +1898,9 @@ export default function Home() {
                       </select>
                     </div>
 
-                    {/* Final Charge Sheet Submission in Court */}
+                    {/* Chargesheet submitted in Court */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Charge Sheet Submitted in Court</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Chargesheet submitted in Court</label>
                       <select value={filters.finalChargesheetSubmitted} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmitted: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
                         <option value="">All</option>
                         <option value="Yes">Yes</option>
