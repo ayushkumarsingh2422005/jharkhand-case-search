@@ -183,7 +183,7 @@ export default function Dashboard() {
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadge(caseItem.caseStatus)}`}>
                           {caseItem.caseStatus}
-                          {caseItem.investigationStatus && ` (${caseItem.investigationStatus})`}
+                          {caseItem.caseStatus === "Under investigation" && caseItem.investigationStatus && ` (${caseItem.investigationStatus})`}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">

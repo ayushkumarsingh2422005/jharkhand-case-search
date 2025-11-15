@@ -16,6 +16,8 @@ type AccusedInfo = {
   address?: string;
   mobileNumber?: string;
   aadhaarNumber?: string;
+  state?: string;
+  district?: string;
   arrestedOn?: string;
   notice41A?: {
     issued: boolean;
@@ -224,28 +226,50 @@ export default function CaseDetail() {
           spReports: (() => {
             const reportsData = caseData.reports || {};
             if (Array.isArray(reportsData.spReports) && reportsData.spReports.length > 0) {
-              return reportsData.spReports.map((report: any, idx: number) => ({
-                rLabel: report.rLabel || `R${idx + 1}`,
-                rDate: report.rDate ? new Date(report.rDate).toISOString().split('T')[0] : "",
-                prLabel: report.prLabel || `PR${idx + 1}`,
-                prDate: report.prDate ? new Date(report.prDate).toISOString().split('T')[0] : "",
+              return reportsData.spReports.map((report: any) => ({
+                label: report.label || "",
+                date: report.date ? new Date(report.date).toISOString().split('T')[0] : "",
                 file: report.file || null,
-              }));
+              })).filter((report: any) => report.label || report.date);
             }
 
+            // Legacy support
             const legacySources = [
-              { rLabel: "R1", rDate: reportsData.r1, prLabel: "PR1", prDate: reportsData.pr1 },
-              { rLabel: "R2", rDate: reportsData.r2, prLabel: "PR2", prDate: reportsData.pr2 },
-              { rLabel: "R3", rDate: reportsData.r3, prLabel: "PR3", prDate: reportsData.pr3 },
+              { label: "R1", date: reportsData.r1 },
+              { label: "R2", date: reportsData.r2 },
+              { label: "R3", date: reportsData.r3 },
             ];
 
             return legacySources
-              .filter(({ rDate, prDate }) => rDate || prDate)
-              .map(({ rLabel, rDate, prLabel, prDate }, idx) => ({
-                rLabel: rLabel || `R${idx + 1}`,
-                rDate: rDate ? new Date(rDate).toISOString().split('T')[0] : "",
-                prLabel: prLabel || `PR${idx + 1}`,
-                prDate: prDate ? new Date(prDate).toISOString().split('T')[0] : "",
+              .filter(({ date }) => date)
+              .map(({ label, date }) => ({
+                label: label || "",
+                date: date ? new Date(date).toISOString().split('T')[0] : "",
+                file: null,
+              }));
+          })(),
+          dspReports: (() => {
+            const reportsData = caseData.reports || {};
+            if (Array.isArray(reportsData.dspReports) && reportsData.dspReports.length > 0) {
+              return reportsData.dspReports.map((report: any) => ({
+                label: report.label || "",
+                date: report.date ? new Date(report.date).toISOString().split('T')[0] : "",
+                file: report.file || null,
+              })).filter((report: any) => report.label || report.date);
+            }
+
+            // Legacy support
+            const legacySources = [
+              { label: "PR1", date: reportsData.pr1 },
+              { label: "PR2", date: reportsData.pr2 },
+              { label: "PR3", date: reportsData.pr3 },
+            ];
+
+            return legacySources
+              .filter(({ date }) => date)
+              .map(({ label, date }) => ({
+                label: label || "",
+                date: date ? new Date(date).toISOString().split('T')[0] : "",
                 file: null,
               }));
           })(),
@@ -299,6 +323,8 @@ export default function CaseDetail() {
           address: acc.address || "",
           mobileNumber: acc.mobileNumber || "",
           aadhaarNumber: acc.aadhaarNumber || "",
+          state: acc.state || "",
+          district: acc.district || "",
           arrestedDate: acc.arrestedDate ? new Date(acc.arrestedDate).toISOString().split('T')[0] : "",
           arrestedOn: acc.arrestedOn ? new Date(acc.arrestedOn).toISOString().split('T')[0] : "",
           notice41A: acc.notice41A ? {
@@ -351,6 +377,8 @@ export default function CaseDetail() {
       address: acc.address || "",
       mobileNumber: acc.mobileNumber || "",
       aadhaarNumber: acc.aadhaarNumber || "",
+      state: acc.state || "",
+      district: acc.district || "",
       arrestedOn: acc.arrestedDate || acc.arrestedOn,
       notice41A: acc.notice41A ? {
         issued: acc.notice41A.issued || false,
@@ -383,34 +411,61 @@ export default function CaseDetail() {
   }, [caseData]);
 
   const spReports = useMemo<
-    Array<{ rLabel: string; rDate: string; prLabel: string; prDate: string; file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null }>
+    Array<{ label: string; date: string; file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null }>
   >(() => {
     const reportsData = caseData?.reports;
     if (!reportsData) return [];
 
     if (Array.isArray(reportsData.spReports) && reportsData.spReports.length > 0) {
-      return reportsData.spReports.map((report: any, idx: number) => ({
-        rLabel: report.rLabel || `R${idx + 1}`,
-        rDate: report.rDate || "",
-        prLabel: report.prLabel || `PR${idx + 1}`,
-        prDate: report.prDate || "",
+      return reportsData.spReports.map((report: any) => ({
+        label: report.label || "",
+        date: report.date || "",
         file: report.file || null,
-      }));
+      })).filter((report: { label: string; date: string; file: any }) => report.label || report.date);
     }
 
+    // Legacy support: convert old pair structure to new structure
     const legacySources = [
-      { rLabel: "R1", rDate: reportsData.r1, prLabel: "PR1", prDate: reportsData.pr1 },
-      { rLabel: "R2", rDate: reportsData.r2, prLabel: "PR2", prDate: reportsData.pr2 },
-      { rLabel: "R3", rDate: reportsData.r3, prLabel: "PR3", prDate: reportsData.pr3 },
+      { label: "R1", date: reportsData.r1 },
+      { label: "R2", date: reportsData.r2 },
+      { label: "R3", date: reportsData.r3 },
     ];
 
     return legacySources
-      .filter(({ rDate, prDate }) => rDate || prDate)
-      .map(({ rLabel, rDate, prLabel, prDate }, idx) => ({
-        rLabel: rLabel || `R${idx + 1}`,
-        rDate: rDate || "",
-        prLabel: prLabel || `PR${idx + 1}`,
-        prDate: prDate || "",
+      .filter(({ date }) => date)
+      .map(({ label, date }) => ({
+        label: label || "",
+        date: date || "",
+        file: null,
+      }));
+  }, [caseData?.reports]);
+
+  const dspReports = useMemo<
+    Array<{ label: string; date: string; file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null }>
+  >(() => {
+    const reportsData = caseData?.reports;
+    if (!reportsData) return [];
+
+    if (Array.isArray(reportsData.dspReports) && reportsData.dspReports.length > 0) {
+      return reportsData.dspReports.map((report: any) => ({
+        label: report.label || "",
+        date: report.date || "",
+        file: report.file || null,
+      })).filter((report: { label: string; date: string; file: any }) => report.label || report.date);
+    }
+
+    // Legacy support: convert old pair structure to new structure
+    const legacySources = [
+      { label: "PR1", date: reportsData.pr1 },
+      { label: "PR2", date: reportsData.pr2 },
+      { label: "PR3", date: reportsData.pr3 },
+    ];
+
+    return legacySources
+      .filter(({ date }) => date)
+      .map(({ label, date }) => ({
+        label: label || "",
+        date: date || "",
         file: null,
       }));
   }, [caseData?.reports]);
@@ -509,7 +564,7 @@ export default function CaseDetail() {
               "bg-red-100 text-red-800 ring-red-600/20"
             }`}>
               {summary.caseStatus}
-              {summary.investigationStatus && ` (${summary.investigationStatus})`}
+              {summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}
             </span>
             {summary.srNsr && (
               <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-indigo-50 text-indigo-700 ring-indigo-600/20">
@@ -567,7 +622,7 @@ export default function CaseDetail() {
                   <li><strong className="font-medium">Crime Head:</strong> {summary.crimeHead}</li>
                   <li><strong className="font-medium">Section:</strong> {summary.section}</li>
                   <li><strong className="font-medium">Punishment:</strong> {summary.punishmentCategory}</li>
-                  <li><strong className="font-medium">Status:</strong> {summary.caseStatus} {summary.investigationStatus && `(${summary.investigationStatus})`}</li>
+                  <li><strong className="font-medium">Status:</strong> {summary.caseStatus}{summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}</li>
                   {summary.srNsr && <li><strong className="font-medium">SR/NSR:</strong> {summary.srNsr}</li>}
                   <li><strong className="font-medium">Priority:</strong> {summary.priority}</li>
                   <li><strong className="font-medium">Property/Professional Crime:</strong> {summary.isPropertyProfessionalCrime ? "Yes" : "No"}</li>
@@ -605,6 +660,8 @@ export default function CaseDetail() {
                       <th className="px-4 py-2 text-left font-medium">Address</th>
                       <th className="px-4 py-2 text-left font-medium">Mobile Number</th>
                       <th className="px-4 py-2 text-left font-medium">Aadhaar Number</th>
+                      <th className="px-4 py-2 text-left font-medium">State</th>
+                      <th className="px-4 py-2 text-left font-medium">District</th>
                       <th className="px-4 py-2 text-left font-medium">Arrest Date</th>
                       <th className="px-4 py-2 text-left font-medium">Days After Arrest</th>
                       <th className="px-4 py-2 text-left font-medium">Charge Sheet Alert</th>
@@ -629,6 +686,8 @@ export default function CaseDetail() {
                           <td className="px-4 py-2">{a.address || "—"}</td>
                           <td className="px-4 py-2">{a.mobileNumber || "—"}</td>
                           <td className="px-4 py-2">{a.aadhaarNumber || "—"}</td>
+                          <td className="px-4 py-2">{a.state || "—"}</td>
+                          <td className="px-4 py-2">{a.district || "—"}</td>
                           <td className="px-4 py-2">{a.arrestedOn || "—"}</td>
                           <td className="px-4 py-2">
                             {daysAfterArrest !== null ? (
@@ -902,21 +961,18 @@ export default function CaseDetail() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card title="Internal Reports">
                 <div className="space-y-4">
+                  {/* SP Reports Section */}
                   <div>
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">SP / DSP Reports</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Reports by SP</span>
                     {spReports.length === 0 ? (
-                      <p className="mt-2 text-sm text-slate-500">No SP / DSP reports recorded.</p>
+                      <p className="mt-2 text-sm text-slate-500">No SP reports recorded.</p>
                     ) : (
                       <div className="mt-2 space-y-2">
                         {spReports.map((report, index) => (
                           <div key={index} className="rounded-md border border-slate-200 bg-slate-50 p-3">
                             <div className="flex items-center justify-between text-xs font-medium text-slate-700">
-                              <span>{report.rLabel || `R${index + 1}`}</span>
-                              <span>{report.rDate ? formatDate(report.rDate) : "—"}</span>
-                            </div>
-                            <div className="mt-1 flex items-center justify-between text-xs text-slate-600">
-                              <span>{report.prLabel || `PR${index + 1}`}</span>
-                              <span>{report.prDate ? formatDate(report.prDate) : "—"}</span>
+                              <span>{report.label || `R${index + 1}`}</span>
+                              <span>{report.date ? new Date(report.date).toLocaleDateString() : "—"}</span>
                             </div>
                             {report.file && (
                               <div className="mt-2 pt-2 border-t border-slate-200">
@@ -938,11 +994,51 @@ export default function CaseDetail() {
                       </div>
                     )}
                   </div>
+
+                  {/* Supervision (after SP Reports) */}
                   <div className="space-y-2">
                     <FieldRow
                       label="Supervision"
                       value={caseData?.reports?.supervision ? new Date(caseData.reports.supervision).toLocaleDateString() : "—"}
                     />
+                  </div>
+
+                  {/* DSP Reports Section */}
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Reports by DSP</span>
+                    {dspReports.length === 0 ? (
+                      <p className="mt-2 text-sm text-slate-500">No DSP reports recorded.</p>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        {dspReports.map((report, index) => (
+                          <div key={index} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                            <div className="flex items-center justify-between text-xs font-medium text-slate-700">
+                              <span>{report.label || `PR${index + 1}`}</span>
+                              <span>{report.date ? new Date(report.date).toLocaleDateString() : "—"}</span>
+                            </div>
+                            {report.file && (
+                              <div className="mt-2 pt-2 border-t border-slate-200">
+                                <a
+                                  href={report.file.secure_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800"
+                                >
+                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  {report.file.original_filename || "View File"}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Other Reports */}
+                  <div className="space-y-2">
                     <FieldRow
                       label="FPR"
                       value={caseData?.reports?.fpr ? new Date(caseData.reports.fpr).toLocaleDateString() : "—"}

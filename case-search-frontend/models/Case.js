@@ -57,6 +57,12 @@ const AccusedSchema = new mongoose.Schema({
   aadhaarNumber: {
     type: String,
   },
+  state: {
+    type: String,
+  },
+  district: {
+    type: String,
+  },
   arrestedDate: {
     type: Date,
   },
@@ -77,23 +83,36 @@ const AccusedSchema = new mongoose.Schema({
   },
 }, { _id: true });
 
-// Schema for SP/DSP report pairs
-const SPReportPairSchema = new mongoose.Schema({
-  rLabel: {
+// Schema for SP Report (by SP)
+const SPReportSchema = new mongoose.Schema({
+  label: {
     type: String,
     default: '',
   },
-  rDate: {
+  date: {
     type: Date,
   },
-  prLabel: {
+  // File upload for individual SP report
+  file: {
+    public_id: { type: String },
+    secure_url: { type: String },
+    url: { type: String },
+    original_filename: { type: String },
+    format: { type: String },
+    bytes: { type: Number },
+  },
+}, { _id: false });
+
+// Schema for DSP Report (by DSP)
+const DSPReportSchema = new mongoose.Schema({
+  label: {
     type: String,
     default: '',
   },
-  prDate: {
+  date: {
     type: Date,
   },
-  // File upload for individual SP/DSP report pair
+  // File upload for individual DSP report
   file: {
     public_id: { type: String },
     secure_url: { type: String },
@@ -107,7 +126,11 @@ const SPReportPairSchema = new mongoose.Schema({
 // Schema for Reports
 const ReportInfoSchema = new mongoose.Schema({
   spReports: {
-    type: [SPReportPairSchema],
+    type: [SPReportSchema],
+    default: [],
+  },
+  dspReports: {
+    type: [DSPReportSchema],
     default: [],
   },
   supervision: {

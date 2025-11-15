@@ -11,7 +11,40 @@ type AccusedStatus = "Arrested" | "Not arrested" | "Decision pending";
 type Accused = {
   name: string;
   status: AccusedStatus;
+  address?: string;
+  mobileNumber?: string;
+  aadhaarNumber?: string;
+  state?: string;
+  district?: string;
   arrestedDate?: string;
+  arrestedOn?: string;
+  notice41A?: {
+    issued?: boolean;
+    notice1Date?: string;
+    notice2Date?: string;
+    notice3Date?: string;
+  };
+  warrant?: {
+    prayed?: boolean;
+    prayerDate?: string;
+    receiptDate?: string;
+    executionDate?: string;
+    returnDate?: string;
+  };
+  proclamation?: {
+    prayed?: boolean;
+    prayerDate?: string;
+    receiptDate?: string;
+    executionDate?: string;
+    returnDate?: string;
+  };
+  attachment?: {
+    prayed?: boolean;
+    prayerDate?: string;
+    receiptDate?: string;
+    executionDate?: string;
+    returnDate?: string;
+  };
 };
 
 
@@ -89,6 +122,231 @@ const REASON_FOR_PENDENCY_OPTIONS = [
   "Other",
 ];
 
+const INDIAN_STATES = [
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
+];
+
+const DISTRICTS_BY_STATE: Record<string, string[]> = {
+  "Andhra Pradesh": [
+    "Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", 
+    "Prakasam", "Nellore", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"
+  ],
+  "Arunachal Pradesh": [
+    "Tawang", "West Kameng", "East Kameng", "Papum Pare", "Kurung Kumey", "Kra Daadi",
+    "Lower Subansiri", "Upper Subansiri", "West Siang", "East Siang", "Siang", "Upper Siang",
+    "Lower Siang", "Lower Dibang Valley", "Dibang Valley", "Anjaw", "Lohit", "Namsai",
+    "Changlang", "Tirap", "Longding", "Kamle", "Pakke Kessang", "Lepa Rada", "Shi Yomi"
+  ],
+  "Assam": [
+    "Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang",
+    "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Dima Hasao", "Goalpara", "Golaghat",
+    "Hailakandi", "Hojai", "Jorhat", "Kamrup", "Kamrup Metropolitan", "Karbi Anglong",
+    "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Morigaon", "Nagaon", "Nalbari",
+    "Sivasagar", "Sonitpur", "South Salmara-Mankachar", "Tinsukia", "Udalguri", "West Karbi Anglong"
+  ],
+  "Bihar": [
+    "Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur",
+    "Buxar", "Darbhanga", "East Champaran", "Gaya", "Gopalganj", "Jamui", "Jehanabad",
+    "Kaimur", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura", "Madhubani",
+    "Munger", "Muzaffarpur", "Nalanda", "Nawada", "Patna", "Purnia", "Rohtas", "Saharsa",
+    "Samastipur", "Saran", "Sheikhpura", "Sheohar", "Sitamarhi", "Siwan", "Supaul",
+    "Vaishali", "West Champaran"
+  ],
+  "Chhattisgarh": [
+    "Balod", "Baloda Bazar", "Balrampur", "Bastar", "Bemetara", "Bijapur", "Bilaspur",
+    "Dantewada", "Dhamtari", "Durg", "Gariaband", "Gaurela-Pendra-Marwahi", "Janjgir-Champa",
+    "Jashpur", "Kabirdham", "Kanker", "Kondagaon", "Korba", "Koriya", "Mahasamund",
+    "Mungeli", "Narayanpur", "Raigarh", "Raipur", "Rajnandgaon", "Sukma", "Surajpur",
+    "Surguja", "Uttar Bastar Kanker"
+  ],
+  "Goa": ["North Goa", "South Goa"],
+  "Gujarat": [
+    "Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar",
+    "Botad", "Chhota Udaipur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar",
+    "Gir Somnath", "Jamnagar", "Junagadh", "Kachchh", "Kheda", "Mahisagar", "Mehsana",
+    "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot",
+    "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"
+  ],
+  "Haryana": [
+    "Ambala", "Bhiwani", "Charkhi Dadri", "Faridabad", "Fatehabad", "Gurugram",
+    "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Mahendragarh",
+    "Nuh", "Palwal", "Panchkula", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"
+  ],
+  "Himachal Pradesh": [
+    "Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahaul and Spiti",
+    "Mandi", "Shimla", "Sirmaur", "Solan", "Una"
+  ],
+  "Jharkhand": [
+    "Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum", "Garhwa",
+    "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma",
+    "Latehar", "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahibganj",
+    "Seraikela-Kharsawan", "Simdega", "West Singhbhum"
+  ],
+  "Karnataka": [
+    "Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar",
+    "Chamarajanagar", "Chikballapur", "Chikkamagaluru", "Chitradurga", "Dakshina Kannada",
+    "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu",
+    "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga",
+    "Tumakuru", "Udupi", "Uttara Kannada", "Vijayapura", "Vijayanagara", "Yadgir"
+  ],
+  "Kerala": [
+    "Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam",
+    "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"
+  ],
+  "Madhya Pradesh": [
+    "Agar Malwa", "Alirajpur", "Anuppur", "Ashoknagar", "Balaghat", "Barwani",
+    "Betul", "Bhind", "Bhopal", "Burhanpur", "Chhatarpur", "Chhindwara", "Damoh",
+    "Datia", "Dewas", "Dhar", "Dindori", "Guna", "Gwalior", "Harda", "Hoshangabad",
+    "Indore", "Jabalpur", "Jhabua", "Katni", "Khandwa", "Khargone", "Mandla",
+    "Mandsaur", "Morena", "Narsinghpur", "Neemuch", "Panna", "Raisen", "Rajgarh",
+    "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shahdol", "Shajapur",
+    "Sheopur", "Shivpuri", "Sidhi", "Singrauli", "Tikamgarh", "Ujjain", "Umaria", "Vidisha"
+  ],
+  "Maharashtra": [
+    "Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana",
+    "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna",
+    "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded",
+    "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad",
+    "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha",
+    "Washim", "Yavatmal"
+  ],
+  "Manipur": [
+    "Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam",
+    "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong",
+    "Tengnoupal", "Thoubal", "Ukhrul"
+  ],
+  "Meghalaya": [
+    "East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "North Garo Hills",
+    "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills",
+    "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"
+  ],
+  "Mizoram": [
+    "Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei",
+    "Mamit", "Saiha", "Saitual", "Serchhip"
+  ],
+  "Nagaland": [
+    "Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Peren",
+    "Phek", "Tuensang", "Wokha", "Zunheboto"
+  ],
+  "Odisha": [
+    "Angul", "Balangir", "Balasore", "Bargarh", "Bhadrak", "Boudh", "Cuttack",
+    "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur", "Jajpur",
+    "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Kendujhar", "Khordha",
+    "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada",
+    "Puri", "Rayagada", "Sambalpur", "Subarnapur", "Sundargarh"
+  ],
+  "Punjab": [
+    "Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka",
+    "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana",
+    "Malerkotla", "Mansa", "Moga", "Muktsar", "Nawanshahr", "Pathankot", "Patiala",
+    "Rupnagar", "Sahibzada Ajit Singh Nagar", "Sangrur", "Shahid Bhagat Singh Nagar",
+    "Sri Muktsar Sahib", "Tarn Taran"
+  ],
+  "Rajasthan": [
+    "Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara",
+    "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur",
+    "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu",
+    "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand",
+    "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"
+  ],
+  "Sikkim": ["East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"],
+  "Tamil Nadu": [
+    "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri",
+    "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur",
+    "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris",
+    "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga",
+    "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli",
+    "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore",
+    "Viluppuram", "Virudhunagar"
+  ],
+  "Telangana": [
+    "Adilabad", "Bhadradri Kothagudem", "Hanamkonda", "Hyderabad", "Jagtial",
+    "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar",
+    "Khammam", "Komaram Bheem", "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak",
+    "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal",
+    "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet",
+    "Suryapet", "Vikarabad", "Wanaparthy", "Warangal", "Yadadri Bhuvanagiri"
+  ],
+  "Tripura": [
+    "Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura",
+    "Unakoti", "West Tripura"
+  ],
+  "Uttar Pradesh": [
+    "Agra", "Aligarh", "Allahabad", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya",
+    "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki",
+    "Bareilly", "Basti", "Bhadohi", "Bijnor", "Budaun", "Bulandshahr", "Chandauli",
+    "Chitrakoot", "Deoria", "Etah", "Etawah", "Faizabad", "Farrukhabad", "Fatehpur",
+    "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur",
+    "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj",
+    "Kanpur Dehat", "Kanpur Nagar", "Kaushambi", "Kushinagar", "Lakhimpur Kheri",
+    "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau",
+    "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh",
+    "Raebareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Shahjahanpur",
+    "Shamli", "Shrawasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur",
+    "Unnao", "Varanasi"
+  ],
+  "Uttarakhand": [
+    "Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar",
+    "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudraprayag", "Tehri Garhwal", "Udham Singh Nagar", "Uttarkashi"
+  ],
+  "West Bengal": [
+    "Alipurduar", "Bankura", "Birbhum", "Cooch Behar", "Dakshin Dinajpur", "Darjeeling",
+    "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Malda",
+    "Murshidabad", "Nadia", "North 24 Parganas", "Paschim Bardhaman", "Paschim Medinipur",
+    "Purba Bardhaman", "Purba Medinipur", "Purulia", "South 24 Parganas", "Uttar Dinajpur"
+  ],
+  "Andaman and Nicobar Islands": ["Nicobar", "North and Middle Andaman", "South Andaman"],
+  "Chandigarh": ["Chandigarh"],
+  "Dadra and Nagar Haveli and Daman and Diu": ["Dadra and Nagar Haveli", "Daman", "Diu"],
+  "Delhi": [
+    "Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi",
+    "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"
+  ],
+  "Jammu and Kashmir": [
+    "Anantnag", "Bandipora", "Baramulla", "Budgam", "Doda", "Ganderbal", "Jammu",
+    "Kathua", "Kishtwar", "Kulgam", "Kupwara", "Poonch", "Pulwama", "Rajouri",
+    "Ramban", "Reasi", "Samba", "Shopian", "Srinagar", "Udhampur"
+  ],
+  "Ladakh": ["Kargil", "Leh"],
+  "Lakshadweep": ["Lakshadweep"],
+  "Puducherry": ["Karaikal", "Mahe", "Puducherry", "Yanam"],
+};
+
 export default function Home() {
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => Array.from({ length: currentYear - 1999 }, (_, i) => 2000 + i), [currentYear]);
@@ -133,12 +391,57 @@ export default function Home() {
     // Accused filters
     accusedName: "",
     accusedStatus: "" as "" | "Arrested" | "Not arrested" | "Decision pending",
+    accusedAddress: "",
+    accusedMobileNumber: "",
+    accusedAadhaarNumber: "",
+    accusedState: "",
+    accusedDistrict: "",
     accusedCountMin: "",
     accusedCountMax: "",
     arrestedCountMin: "",
     arrestedCountMax: "",
     unarrestedCountMin: "",
     unarrestedCountMax: "",
+    // Notice 41A filters
+    notice41AIssued: false,
+    notice41ADateFrom: "",
+    notice41ADateTo: "",
+    // Warrant filters
+    warrantPrayed: "" as "" | "Yes" | "No",
+    warrantPrayerDateFrom: "",
+    warrantPrayerDateTo: "",
+    warrantReceiptDateFrom: "",
+    warrantReceiptDateTo: "",
+    warrantExecutionDateFrom: "",
+    warrantExecutionDateTo: "",
+    warrantReturnDateFrom: "",
+    warrantReturnDateTo: "",
+    warrantReceivedButNotExecuted: false,
+    warrantIssuedMonthsAgo: "" as "" | "3" | "6" | "9" | "12",
+    // Proclamation filters
+    proclamationPrayed: "" as "" | "Yes" | "No",
+    proclamationPrayerDateFrom: "",
+    proclamationPrayerDateTo: "",
+    proclamationReceiptDateFrom: "",
+    proclamationReceiptDateTo: "",
+    proclamationExecutionDateFrom: "",
+    proclamationExecutionDateTo: "",
+    proclamationReturnDateFrom: "",
+    proclamationReturnDateTo: "",
+    proclamationReceivedButNotExecuted: false,
+    proclamationIssuedMonthsAgo: "" as "" | "3" | "6" | "9" | "12",
+    // Attachment filters
+    attachmentPrayed: "" as "" | "Yes" | "No",
+    attachmentPrayerDateFrom: "",
+    attachmentPrayerDateTo: "",
+    attachmentReceiptDateFrom: "",
+    attachmentReceiptDateTo: "",
+    attachmentExecutionDateFrom: "",
+    attachmentExecutionDateTo: "",
+    attachmentReturnDateFrom: "",
+    attachmentReturnDateTo: "",
+    attachmentReceivedButNotExecuted: false,
+    attachmentIssuedMonthsAgo: "" as "" | "3" | "6" | "9" | "12",
     // Date filters
     caseDateFrom: "",
     caseDateTo: "",
@@ -744,16 +1047,218 @@ export default function Home() {
       .map((row) => {
         // Check accused filters
         let matchedAccused: Accused[] = [];
-        if (filters.accusedName || filters.accusedStatus) {
-          matchedAccused = row.accused.filter((acc) => {
-            const nameMatch = !filters.accusedName || acc.name.toLowerCase().includes(filters.accusedName.toLowerCase());
-            const statusMatch = !filters.accusedStatus || acc.status.toLowerCase() === filters.accusedStatus.toLowerCase();
-            return nameMatch && statusMatch;
+        const hasAccusedFilters = filters.accusedName || filters.accusedStatus || filters.accusedAddress || 
+          filters.accusedMobileNumber || filters.accusedAadhaarNumber || filters.accusedState || 
+          filters.accusedDistrict || filters.notice41AIssued || filters.warrantPrayed || 
+          filters.warrantReceivedButNotExecuted || filters.warrantIssuedMonthsAgo ||
+          filters.proclamationPrayed || filters.proclamationReceivedButNotExecuted || filters.proclamationIssuedMonthsAgo ||
+          filters.attachmentPrayed || filters.attachmentReceivedButNotExecuted || filters.attachmentIssuedMonthsAgo;
+        
+        if (hasAccusedFilters) {
+          matchedAccused = row.accused.filter((acc: any) => {
+            const nameMatch = !filters.accusedName || acc.name?.toLowerCase().includes(filters.accusedName.toLowerCase());
+            const statusMatch = !filters.accusedStatus || acc.status?.toLowerCase() === filters.accusedStatus.toLowerCase();
+            const addressMatch = !filters.accusedAddress || acc.address?.toLowerCase().includes(filters.accusedAddress.toLowerCase());
+            const mobileMatch = !filters.accusedMobileNumber || acc.mobileNumber?.includes(filters.accusedMobileNumber);
+            const aadhaarMatch = !filters.accusedAadhaarNumber || acc.aadhaarNumber?.includes(filters.accusedAadhaarNumber);
+            const stateMatch = !filters.accusedState || acc.state === filters.accusedState;
+            const districtMatch = !filters.accusedDistrict || acc.district === filters.accusedDistrict;
+            
+            // Notice 41A filters
+            let notice41AMatch = true;
+            if (filters.notice41AIssued) {
+              notice41AMatch = acc.notice41A?.issued === true;
+            }
+            if (filters.notice41ADateFrom || filters.notice41ADateTo) {
+              const noticeDate = acc.notice41A?.notice1Date || acc.notice41A?.notice2Date || acc.notice41A?.notice3Date;
+              if (!noticeDate) {
+                notice41AMatch = false;
+              } else {
+                const date = new Date(noticeDate);
+                if (filters.notice41ADateFrom && date < new Date(filters.notice41ADateFrom)) notice41AMatch = false;
+                if (filters.notice41ADateTo && date > new Date(filters.notice41ADateTo)) notice41AMatch = false;
+              }
+            }
+            
+            // Warrant filters
+            let warrantMatch = true;
+            if (filters.warrantPrayed === "Yes") {
+              warrantMatch = acc.warrant?.prayed === true;
+            } else if (filters.warrantPrayed === "No") {
+              warrantMatch = acc.warrant?.prayed !== true;
+            }
+            if (filters.warrantReceivedButNotExecuted) {
+              const hasReceipt = !!acc.warrant?.receiptDate;
+              const hasExecution = !!acc.warrant?.executionDate;
+              if (!hasReceipt || hasExecution) warrantMatch = false;
+            }
+            if (filters.warrantIssuedMonthsAgo) {
+              const prayerDate = acc.warrant?.prayerDate;
+              if (!prayerDate) {
+                warrantMatch = false;
+              } else {
+                const monthsAgo = Number(filters.warrantIssuedMonthsAgo);
+                const prayerDateObj = new Date(prayerDate);
+                const today = new Date();
+                const diffMonths = (today.getFullYear() - prayerDateObj.getFullYear()) * 12 + (today.getMonth() - prayerDateObj.getMonth());
+                if (diffMonths < monthsAgo) warrantMatch = false;
+              }
+            }
+            if (filters.warrantPrayerDateFrom || filters.warrantPrayerDateTo) {
+              const date = acc.warrant?.prayerDate ? new Date(acc.warrant.prayerDate) : null;
+              if (!date) warrantMatch = false;
+              else {
+                if (filters.warrantPrayerDateFrom && date < new Date(filters.warrantPrayerDateFrom)) warrantMatch = false;
+                if (filters.warrantPrayerDateTo && date > new Date(filters.warrantPrayerDateTo)) warrantMatch = false;
+              }
+            }
+            if (filters.warrantReceiptDateFrom || filters.warrantReceiptDateTo) {
+              const date = acc.warrant?.receiptDate ? new Date(acc.warrant.receiptDate) : null;
+              if (!date) warrantMatch = false;
+              else {
+                if (filters.warrantReceiptDateFrom && date < new Date(filters.warrantReceiptDateFrom)) warrantMatch = false;
+                if (filters.warrantReceiptDateTo && date > new Date(filters.warrantReceiptDateTo)) warrantMatch = false;
+              }
+            }
+            if (filters.warrantExecutionDateFrom || filters.warrantExecutionDateTo) {
+              const date = acc.warrant?.executionDate ? new Date(acc.warrant.executionDate) : null;
+              if (!date) warrantMatch = false;
+              else {
+                if (filters.warrantExecutionDateFrom && date < new Date(filters.warrantExecutionDateFrom)) warrantMatch = false;
+                if (filters.warrantExecutionDateTo && date > new Date(filters.warrantExecutionDateTo)) warrantMatch = false;
+              }
+            }
+            if (filters.warrantReturnDateFrom || filters.warrantReturnDateTo) {
+              const date = acc.warrant?.returnDate ? new Date(acc.warrant.returnDate) : null;
+              if (!date) warrantMatch = false;
+              else {
+                if (filters.warrantReturnDateFrom && date < new Date(filters.warrantReturnDateFrom)) warrantMatch = false;
+                if (filters.warrantReturnDateTo && date > new Date(filters.warrantReturnDateTo)) warrantMatch = false;
+              }
+            }
+            
+            // Proclamation filters
+            let proclamationMatch = true;
+            if (filters.proclamationPrayed === "Yes") {
+              proclamationMatch = acc.proclamation?.prayed === true;
+            } else if (filters.proclamationPrayed === "No") {
+              proclamationMatch = acc.proclamation?.prayed !== true;
+            }
+            if (filters.proclamationReceivedButNotExecuted) {
+              const hasReceipt = !!acc.proclamation?.receiptDate;
+              const hasExecution = !!acc.proclamation?.executionDate;
+              if (!hasReceipt || hasExecution) proclamationMatch = false;
+            }
+            if (filters.proclamationIssuedMonthsAgo) {
+              const prayerDate = acc.proclamation?.prayerDate;
+              if (!prayerDate) {
+                proclamationMatch = false;
+              } else {
+                const monthsAgo = Number(filters.proclamationIssuedMonthsAgo);
+                const prayerDateObj = new Date(prayerDate);
+                const today = new Date();
+                const diffMonths = (today.getFullYear() - prayerDateObj.getFullYear()) * 12 + (today.getMonth() - prayerDateObj.getMonth());
+                if (diffMonths < monthsAgo) proclamationMatch = false;
+              }
+            }
+            if (filters.proclamationPrayerDateFrom || filters.proclamationPrayerDateTo) {
+              const date = acc.proclamation?.prayerDate ? new Date(acc.proclamation.prayerDate) : null;
+              if (!date) proclamationMatch = false;
+              else {
+                if (filters.proclamationPrayerDateFrom && date < new Date(filters.proclamationPrayerDateFrom)) proclamationMatch = false;
+                if (filters.proclamationPrayerDateTo && date > new Date(filters.proclamationPrayerDateTo)) proclamationMatch = false;
+              }
+            }
+            if (filters.proclamationReceiptDateFrom || filters.proclamationReceiptDateTo) {
+              const date = acc.proclamation?.receiptDate ? new Date(acc.proclamation.receiptDate) : null;
+              if (!date) proclamationMatch = false;
+              else {
+                if (filters.proclamationReceiptDateFrom && date < new Date(filters.proclamationReceiptDateFrom)) proclamationMatch = false;
+                if (filters.proclamationReceiptDateTo && date > new Date(filters.proclamationReceiptDateTo)) proclamationMatch = false;
+              }
+            }
+            if (filters.proclamationExecutionDateFrom || filters.proclamationExecutionDateTo) {
+              const date = acc.proclamation?.executionDate ? new Date(acc.proclamation.executionDate) : null;
+              if (!date) proclamationMatch = false;
+              else {
+                if (filters.proclamationExecutionDateFrom && date < new Date(filters.proclamationExecutionDateFrom)) proclamationMatch = false;
+                if (filters.proclamationExecutionDateTo && date > new Date(filters.proclamationExecutionDateTo)) proclamationMatch = false;
+              }
+            }
+            if (filters.proclamationReturnDateFrom || filters.proclamationReturnDateTo) {
+              const date = acc.proclamation?.returnDate ? new Date(acc.proclamation.returnDate) : null;
+              if (!date) proclamationMatch = false;
+              else {
+                if (filters.proclamationReturnDateFrom && date < new Date(filters.proclamationReturnDateFrom)) proclamationMatch = false;
+                if (filters.proclamationReturnDateTo && date > new Date(filters.proclamationReturnDateTo)) proclamationMatch = false;
+              }
+            }
+            
+            // Attachment filters
+            let attachmentMatch = true;
+            if (filters.attachmentPrayed === "Yes") {
+              attachmentMatch = acc.attachment?.prayed === true;
+            } else if (filters.attachmentPrayed === "No") {
+              attachmentMatch = acc.attachment?.prayed !== true;
+            }
+            if (filters.attachmentReceivedButNotExecuted) {
+              const hasReceipt = !!acc.attachment?.receiptDate;
+              const hasExecution = !!acc.attachment?.executionDate;
+              if (!hasReceipt || hasExecution) attachmentMatch = false;
+            }
+            if (filters.attachmentIssuedMonthsAgo) {
+              const prayerDate = acc.attachment?.prayerDate;
+              if (!prayerDate) {
+                attachmentMatch = false;
+              } else {
+                const monthsAgo = Number(filters.attachmentIssuedMonthsAgo);
+                const prayerDateObj = new Date(prayerDate);
+                const today = new Date();
+                const diffMonths = (today.getFullYear() - prayerDateObj.getFullYear()) * 12 + (today.getMonth() - prayerDateObj.getMonth());
+                if (diffMonths < monthsAgo) attachmentMatch = false;
+              }
+            }
+            if (filters.attachmentPrayerDateFrom || filters.attachmentPrayerDateTo) {
+              const date = acc.attachment?.prayerDate ? new Date(acc.attachment.prayerDate) : null;
+              if (!date) attachmentMatch = false;
+              else {
+                if (filters.attachmentPrayerDateFrom && date < new Date(filters.attachmentPrayerDateFrom)) attachmentMatch = false;
+                if (filters.attachmentPrayerDateTo && date > new Date(filters.attachmentPrayerDateTo)) attachmentMatch = false;
+              }
+            }
+            if (filters.attachmentReceiptDateFrom || filters.attachmentReceiptDateTo) {
+              const date = acc.attachment?.receiptDate ? new Date(acc.attachment.receiptDate) : null;
+              if (!date) attachmentMatch = false;
+              else {
+                if (filters.attachmentReceiptDateFrom && date < new Date(filters.attachmentReceiptDateFrom)) attachmentMatch = false;
+                if (filters.attachmentReceiptDateTo && date > new Date(filters.attachmentReceiptDateTo)) attachmentMatch = false;
+              }
+            }
+            if (filters.attachmentExecutionDateFrom || filters.attachmentExecutionDateTo) {
+              const date = acc.attachment?.executionDate ? new Date(acc.attachment.executionDate) : null;
+              if (!date) attachmentMatch = false;
+              else {
+                if (filters.attachmentExecutionDateFrom && date < new Date(filters.attachmentExecutionDateFrom)) attachmentMatch = false;
+                if (filters.attachmentExecutionDateTo && date > new Date(filters.attachmentExecutionDateTo)) attachmentMatch = false;
+              }
+            }
+            if (filters.attachmentReturnDateFrom || filters.attachmentReturnDateTo) {
+              const date = acc.attachment?.returnDate ? new Date(acc.attachment.returnDate) : null;
+              if (!date) attachmentMatch = false;
+              else {
+                if (filters.attachmentReturnDateFrom && date < new Date(filters.attachmentReturnDateFrom)) attachmentMatch = false;
+                if (filters.attachmentReturnDateTo && date > new Date(filters.attachmentReturnDateTo)) attachmentMatch = false;
+              }
+            }
+            
+            return nameMatch && statusMatch && addressMatch && mobileMatch && aadhaarMatch && 
+              stateMatch && districtMatch && notice41AMatch && warrantMatch && 
+              proclamationMatch && attachmentMatch;
           });
         }
 
         // If accused filters are applied but no match, exclude case
-        if ((filters.accusedName || filters.accusedStatus) && matchedAccused.length === 0) {
+        if (hasAccusedFilters && matchedAccused.length === 0) {
           return null;
         }
 
@@ -1040,12 +1545,53 @@ export default function Home() {
       reasonForPendency: [],
       accusedName: "",
       accusedStatus: "",
+      accusedAddress: "",
+      accusedMobileNumber: "",
+      accusedAadhaarNumber: "",
+      accusedState: "",
+      accusedDistrict: "",
       accusedCountMin: "",
       accusedCountMax: "",
       arrestedCountMin: "",
       arrestedCountMax: "",
       unarrestedCountMin: "",
       unarrestedCountMax: "",
+      notice41AIssued: false,
+      notice41ADateFrom: "",
+      notice41ADateTo: "",
+      warrantPrayed: "",
+      warrantPrayerDateFrom: "",
+      warrantPrayerDateTo: "",
+      warrantReceiptDateFrom: "",
+      warrantReceiptDateTo: "",
+      warrantExecutionDateFrom: "",
+      warrantExecutionDateTo: "",
+      warrantReturnDateFrom: "",
+      warrantReturnDateTo: "",
+      warrantReceivedButNotExecuted: false,
+      warrantIssuedMonthsAgo: "",
+      proclamationPrayed: "",
+      proclamationPrayerDateFrom: "",
+      proclamationPrayerDateTo: "",
+      proclamationReceiptDateFrom: "",
+      proclamationReceiptDateTo: "",
+      proclamationExecutionDateFrom: "",
+      proclamationExecutionDateTo: "",
+      proclamationReturnDateFrom: "",
+      proclamationReturnDateTo: "",
+      proclamationReceivedButNotExecuted: false,
+      proclamationIssuedMonthsAgo: "",
+      attachmentPrayed: "",
+      attachmentPrayerDateFrom: "",
+      attachmentPrayerDateTo: "",
+      attachmentReceiptDateFrom: "",
+      attachmentReceiptDateTo: "",
+      attachmentExecutionDateFrom: "",
+      attachmentExecutionDateTo: "",
+      attachmentReturnDateFrom: "",
+      attachmentReturnDateTo: "",
+      attachmentReceivedButNotExecuted: false,
+      attachmentIssuedMonthsAgo: "",
       caseDateFrom: "",
       caseDateTo: "",
       arrestDateFrom: "",
@@ -1472,60 +2018,319 @@ export default function Home() {
                 </svg>
               </button>
               {expandedSections.accused && (
-                <div className="px-5 pb-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Name</label>
-                  <input value={filters.accusedName} onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter name" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Status</label>
-                  <select value={filters.accusedStatus} onChange={(e) => setFilters({ ...filters, accusedStatus: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                    <option value="">All Status</option>
-                    <option>Arrested</option>
-                    <option>Not arrested</option>
-                    <option>Decision pending</option>
-                  </select>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Accused Count</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                      <input type="number" min="0" value={filters.accusedCountMin} onChange={(e) => setFilters({ ...filters, accusedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                      <input type="number" min="0" value={filters.accusedCountMax} onChange={(e) => setFilters({ ...filters, accusedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
-                    </div>
-                  </div>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrested Count</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                      <input type="number" min="0" value={filters.arrestedCountMin} onChange={(e) => setFilters({ ...filters, arrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                      <input type="number" min="0" value={filters.arrestedCountMax} onChange={(e) => setFilters({ ...filters, arrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
-                    </div>
-                  </div>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Unarrested Count</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                      <input type="number" min="0" value={filters.unarrestedCountMin} onChange={(e) => setFilters({ ...filters, unarrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                      <input type="number" min="0" value={filters.unarrestedCountMax} onChange={(e) => setFilters({ ...filters, unarrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                <div className="px-5 pb-5 space-y-6">
+                  {/* Basic Accused Information */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Basic Information</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Name</label>
+                        <input value={filters.accusedName} onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter name" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Status</label>
+                        <select value={filters.accusedStatus} onChange={(e) => setFilters({ ...filters, accusedStatus: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                          <option value="">All Status</option>
+                          <option>Arrested</option>
+                          <option>Not arrested</option>
+                          <option>Decision pending</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Address</label>
+                        <input value={filters.accusedAddress} onChange={(e) => setFilters({ ...filters, accusedAddress: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter address" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Mobile Number</label>
+                        <input value={filters.accusedMobileNumber} onChange={(e) => setFilters({ ...filters, accusedMobileNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter mobile number" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Aadhaar Number</label>
+                        <input value={filters.accusedAadhaarNumber} onChange={(e) => setFilters({ ...filters, accusedAadhaarNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter Aadhaar number" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">State</label>
+                        <select value={filters.accusedState} onChange={(e) => setFilters({ ...filters, accusedState: e.target.value, accusedDistrict: "" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                          <option value="">All States</option>
+                          {INDIAN_STATES.map((state) => (
+                            <option key={state} value={state}>{state}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">District</label>
+                        <select value={filters.accusedDistrict} onChange={(e) => setFilters({ ...filters, accusedDistrict: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" disabled={!filters.accusedState}>
+                          <option value="">All Districts</option>
+                          {filters.accusedState && DISTRICTS_BY_STATE[filters.accusedState]?.map((district) => (
+                            <option key={district} value={district}>{district}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  {/* Accused Counts */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Accused Counts</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Accused Count</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                            <input type="number" min="0" value={filters.accusedCountMin} onChange={(e) => setFilters({ ...filters, accusedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                            <input type="number" min="0" value={filters.accusedCountMax} onChange={(e) => setFilters({ ...filters, accusedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrested Count</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                            <input type="number" min="0" value={filters.arrestedCountMin} onChange={(e) => setFilters({ ...filters, arrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                            <input type="number" min="0" value={filters.arrestedCountMax} onChange={(e) => setFilters({ ...filters, arrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Unarrested Count</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                            <input type="number" min="0" value={filters.unarrestedCountMin} onChange={(e) => setFilters({ ...filters, unarrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                            <input type="number" min="0" value={filters.unarrestedCountMax} onChange={(e) => setFilters({ ...filters, unarrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notice 41A */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Notice 41A</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="flex items-center">
+                        <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.notice41AIssued}
+                            onChange={(e) => setFilters({ ...filters, notice41AIssued: e.target.checked })}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          Notice 41A Issued
+                        </label>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Notice Date From</label>
+                        <input type="date" value={filters.notice41ADateFrom} onChange={(e) => setFilters({ ...filters, notice41ADateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Notice Date To</label>
+                        <input type="date" value={filters.notice41ADateTo} onChange={(e) => setFilters({ ...filters, notice41ADateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Warrant */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Warrant</h4>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Prayed</label>
+                          <select value={filters.warrantPrayed} onChange={(e) => setFilters({ ...filters, warrantPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">All</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center">
+                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.warrantReceivedButNotExecuted}
+                              onChange={(e) => setFilters({ ...filters, warrantReceivedButNotExecuted: e.target.checked })}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Warrant Received but Not Executed
+                          </label>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Issued (Months Ago)</label>
+                          <select value={filters.warrantIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, warrantIssuedMonthsAgo: e.target.value as "" | "3" | "6" | "9" | "12" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">Any</option>
+                            <option value="3">3 months</option>
+                            <option value="6">6 months</option>
+                            <option value="9">9 months</option>
+                            <option value="12">12 months</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
+                          <input type="date" value={filters.warrantPrayerDateFrom} onChange={(e) => setFilters({ ...filters, warrantPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
+                          <input type="date" value={filters.warrantPrayerDateTo} onChange={(e) => setFilters({ ...filters, warrantPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
+                          <input type="date" value={filters.warrantReceiptDateFrom} onChange={(e) => setFilters({ ...filters, warrantReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
+                          <input type="date" value={filters.warrantReceiptDateTo} onChange={(e) => setFilters({ ...filters, warrantReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
+                          <input type="date" value={filters.warrantExecutionDateFrom} onChange={(e) => setFilters({ ...filters, warrantExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
+                          <input type="date" value={filters.warrantExecutionDateTo} onChange={(e) => setFilters({ ...filters, warrantExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Proclamation */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Proclamation</h4>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Prayed</label>
+                          <select value={filters.proclamationPrayed} onChange={(e) => setFilters({ ...filters, proclamationPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">All</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center">
+                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.proclamationReceivedButNotExecuted}
+                              onChange={(e) => setFilters({ ...filters, proclamationReceivedButNotExecuted: e.target.checked })}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Proclamation Received but Not Executed
+                          </label>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Issued (Months Ago)</label>
+                          <select value={filters.proclamationIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, proclamationIssuedMonthsAgo: e.target.value as "" | "3" | "6" | "9" | "12" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">Any</option>
+                            <option value="3">3 months</option>
+                            <option value="6">6 months</option>
+                            <option value="9">9 months</option>
+                            <option value="12">12 months</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
+                          <input type="date" value={filters.proclamationPrayerDateFrom} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
+                          <input type="date" value={filters.proclamationPrayerDateTo} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
+                          <input type="date" value={filters.proclamationReceiptDateFrom} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
+                          <input type="date" value={filters.proclamationReceiptDateTo} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
+                          <input type="date" value={filters.proclamationExecutionDateFrom} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
+                          <input type="date" value={filters.proclamationExecutionDateTo} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attachment */}
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Attachment</h4>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Prayed</label>
+                          <select value={filters.attachmentPrayed} onChange={(e) => setFilters({ ...filters, attachmentPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">All</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center">
+                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.attachmentReceivedButNotExecuted}
+                              onChange={(e) => setFilters({ ...filters, attachmentReceivedButNotExecuted: e.target.checked })}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Attachment Received but Not Executed
+                          </label>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Issued (Months Ago)</label>
+                          <select value={filters.attachmentIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, attachmentIssuedMonthsAgo: e.target.value as "" | "3" | "6" | "9" | "12" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">Any</option>
+                            <option value="3">3 months</option>
+                            <option value="6">6 months</option>
+                            <option value="9">9 months</option>
+                            <option value="12">12 months</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
+                          <input type="date" value={filters.attachmentPrayerDateFrom} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
+                          <input type="date" value={filters.attachmentPrayerDateTo} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
+                          <input type="date" value={filters.attachmentReceiptDateFrom} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
+                          <input type="date" value={filters.attachmentReceiptDateTo} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
+                          <input type="date" value={filters.attachmentExecutionDateFrom} onChange={(e) => setFilters({ ...filters, attachmentExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
+                          <input type="date" value={filters.attachmentExecutionDateTo} onChange={(e) => setFilters({ ...filters, attachmentExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

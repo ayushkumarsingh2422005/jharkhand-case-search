@@ -36,6 +36,231 @@ const INJURY_TYPES = [
   "Other",
 ];
 
+const INDIAN_STATES = [
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
+];
+
+const DISTRICTS_BY_STATE: Record<string, string[]> = {
+  "Andhra Pradesh": [
+    "Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", 
+    "Prakasam", "Nellore", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"
+  ],
+  "Arunachal Pradesh": [
+    "Tawang", "West Kameng", "East Kameng", "Papum Pare", "Kurung Kumey", "Kra Daadi",
+    "Lower Subansiri", "Upper Subansiri", "West Siang", "East Siang", "Siang", "Upper Siang",
+    "Lower Siang", "Lower Dibang Valley", "Dibang Valley", "Anjaw", "Lohit", "Namsai",
+    "Changlang", "Tirap", "Longding", "Kamle", "Pakke Kessang", "Lepa Rada", "Shi Yomi"
+  ],
+  "Assam": [
+    "Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang",
+    "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Dima Hasao", "Goalpara", "Golaghat",
+    "Hailakandi", "Hojai", "Jorhat", "Kamrup", "Kamrup Metropolitan", "Karbi Anglong",
+    "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Morigaon", "Nagaon", "Nalbari",
+    "Sivasagar", "Sonitpur", "South Salmara-Mankachar", "Tinsukia", "Udalguri", "West Karbi Anglong"
+  ],
+  "Bihar": [
+    "Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur",
+    "Buxar", "Darbhanga", "East Champaran", "Gaya", "Gopalganj", "Jamui", "Jehanabad",
+    "Kaimur", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura", "Madhubani",
+    "Munger", "Muzaffarpur", "Nalanda", "Nawada", "Patna", "Purnia", "Rohtas", "Saharsa",
+    "Samastipur", "Saran", "Sheikhpura", "Sheohar", "Sitamarhi", "Siwan", "Supaul",
+    "Vaishali", "West Champaran"
+  ],
+  "Chhattisgarh": [
+    "Balod", "Baloda Bazar", "Balrampur", "Bastar", "Bemetara", "Bijapur", "Bilaspur",
+    "Dantewada", "Dhamtari", "Durg", "Gariaband", "Gaurela-Pendra-Marwahi", "Janjgir-Champa",
+    "Jashpur", "Kabirdham", "Kanker", "Kondagaon", "Korba", "Koriya", "Mahasamund",
+    "Mungeli", "Narayanpur", "Raigarh", "Raipur", "Rajnandgaon", "Sukma", "Surajpur",
+    "Surguja", "Uttar Bastar Kanker"
+  ],
+  "Goa": ["North Goa", "South Goa"],
+  "Gujarat": [
+    "Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar",
+    "Botad", "Chhota Udaipur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar",
+    "Gir Somnath", "Jamnagar", "Junagadh", "Kachchh", "Kheda", "Mahisagar", "Mehsana",
+    "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot",
+    "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"
+  ],
+  "Haryana": [
+    "Ambala", "Bhiwani", "Charkhi Dadri", "Faridabad", "Fatehabad", "Gurugram",
+    "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Mahendragarh",
+    "Nuh", "Palwal", "Panchkula", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"
+  ],
+  "Himachal Pradesh": [
+    "Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahaul and Spiti",
+    "Mandi", "Shimla", "Sirmaur", "Solan", "Una"
+  ],
+  "Jharkhand": [
+    "Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum", "Garhwa",
+    "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma",
+    "Latehar", "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahibganj",
+    "Seraikela-Kharsawan", "Simdega", "West Singhbhum"
+  ],
+  "Karnataka": [
+    "Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar",
+    "Chamarajanagar", "Chikballapur", "Chikkamagaluru", "Chitradurga", "Dakshina Kannada",
+    "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu",
+    "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga",
+    "Tumakuru", "Udupi", "Uttara Kannada", "Vijayapura", "Vijayanagara", "Yadgir"
+  ],
+  "Kerala": [
+    "Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam",
+    "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"
+  ],
+  "Madhya Pradesh": [
+    "Agar Malwa", "Alirajpur", "Anuppur", "Ashoknagar", "Balaghat", "Barwani",
+    "Betul", "Bhind", "Bhopal", "Burhanpur", "Chhatarpur", "Chhindwara", "Damoh",
+    "Datia", "Dewas", "Dhar", "Dindori", "Guna", "Gwalior", "Harda", "Hoshangabad",
+    "Indore", "Jabalpur", "Jhabua", "Katni", "Khandwa", "Khargone", "Mandla",
+    "Mandsaur", "Morena", "Narsinghpur", "Neemuch", "Panna", "Raisen", "Rajgarh",
+    "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shahdol", "Shajapur",
+    "Sheopur", "Shivpuri", "Sidhi", "Singrauli", "Tikamgarh", "Ujjain", "Umaria", "Vidisha"
+  ],
+  "Maharashtra": [
+    "Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana",
+    "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna",
+    "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded",
+    "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad",
+    "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha",
+    "Washim", "Yavatmal"
+  ],
+  "Manipur": [
+    "Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam",
+    "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong",
+    "Tengnoupal", "Thoubal", "Ukhrul"
+  ],
+  "Meghalaya": [
+    "East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "North Garo Hills",
+    "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills",
+    "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"
+  ],
+  "Mizoram": [
+    "Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei",
+    "Mamit", "Saiha", "Saitual", "Serchhip"
+  ],
+  "Nagaland": [
+    "Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Peren",
+    "Phek", "Tuensang", "Wokha", "Zunheboto"
+  ],
+  "Odisha": [
+    "Angul", "Balangir", "Balasore", "Bargarh", "Bhadrak", "Boudh", "Cuttack",
+    "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur", "Jajpur",
+    "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Kendujhar", "Khordha",
+    "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada",
+    "Puri", "Rayagada", "Sambalpur", "Subarnapur", "Sundargarh"
+  ],
+  "Punjab": [
+    "Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka",
+    "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana",
+    "Malerkotla", "Mansa", "Moga", "Muktsar", "Nawanshahr", "Pathankot", "Patiala",
+    "Rupnagar", "Sahibzada Ajit Singh Nagar", "Sangrur", "Shahid Bhagat Singh Nagar",
+    "Sri Muktsar Sahib", "Tarn Taran"
+  ],
+  "Rajasthan": [
+    "Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara",
+    "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur",
+    "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu",
+    "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand",
+    "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"
+  ],
+  "Sikkim": ["East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"],
+  "Tamil Nadu": [
+    "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri",
+    "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur",
+    "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris",
+    "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga",
+    "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli",
+    "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore",
+    "Viluppuram", "Virudhunagar"
+  ],
+  "Telangana": [
+    "Adilabad", "Bhadradri Kothagudem", "Hanamkonda", "Hyderabad", "Jagtial",
+    "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar",
+    "Khammam", "Komaram Bheem", "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak",
+    "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal",
+    "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet",
+    "Suryapet", "Vikarabad", "Wanaparthy", "Warangal", "Yadadri Bhuvanagiri"
+  ],
+  "Tripura": [
+    "Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura",
+    "Unakoti", "West Tripura"
+  ],
+  "Uttar Pradesh": [
+    "Agra", "Aligarh", "Allahabad", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya",
+    "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki",
+    "Bareilly", "Basti", "Bhadohi", "Bijnor", "Budaun", "Bulandshahr", "Chandauli",
+    "Chitrakoot", "Deoria", "Etah", "Etawah", "Faizabad", "Farrukhabad", "Fatehpur",
+    "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur",
+    "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj",
+    "Kanpur Dehat", "Kanpur Nagar", "Kaushambi", "Kushinagar", "Lakhimpur Kheri",
+    "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau",
+    "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh",
+    "Raebareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Shahjahanpur",
+    "Shamli", "Shrawasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur",
+    "Unnao", "Varanasi"
+  ],
+  "Uttarakhand": [
+    "Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar",
+    "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudraprayag", "Tehri Garhwal", "Udham Singh Nagar", "Uttarkashi"
+  ],
+  "West Bengal": [
+    "Alipurduar", "Bankura", "Birbhum", "Cooch Behar", "Dakshin Dinajpur", "Darjeeling",
+    "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Malda",
+    "Murshidabad", "Nadia", "North 24 Parganas", "Paschim Bardhaman", "Paschim Medinipur",
+    "Purba Bardhaman", "Purba Medinipur", "Purulia", "South 24 Parganas", "Uttar Dinajpur"
+  ],
+  "Andaman and Nicobar Islands": ["Nicobar", "North and Middle Andaman", "South Andaman"],
+  "Chandigarh": ["Chandigarh"],
+  "Dadra and Nagar Haveli and Daman and Diu": ["Dadra and Nagar Haveli", "Daman", "Diu"],
+  "Delhi": [
+    "Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi",
+    "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"
+  ],
+  "Jammu and Kashmir": [
+    "Anantnag", "Bandipora", "Baramulla", "Budgam", "Doda", "Ganderbal", "Jammu",
+    "Kathua", "Kishtwar", "Kulgam", "Kupwara", "Poonch", "Pulwama", "Rajouri",
+    "Ramban", "Reasi", "Samba", "Shopian", "Srinagar", "Udhampur"
+  ],
+  "Ladakh": ["Kargil", "Leh"],
+  "Lakshadweep": ["Lakshadweep"],
+  "Puducherry": ["Karaikal", "Mahe", "Puducherry", "Yanam"],
+};
+
 export default function AddCase() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -60,10 +285,13 @@ export default function AddCase() {
     diary: [] as Array<{ diaryNo: string; diaryDate: string }>,
     reports: {
       spReports: [] as Array<{
-        rLabel: string;
-        rDate: string;
-        prLabel: string;
-        prDate: string;
+        label: string;
+        date: string;
+        file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null;
+      }>,
+      dspReports: [] as Array<{
+        label: string;
+        date: string;
         file: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null;
       }>,
       supervision: "",
@@ -122,6 +350,8 @@ export default function AddCase() {
       address: string;
       mobileNumber: string;
       aadhaarNumber: string;
+      state?: string;
+      district?: string;
       arrestedDate?: string;
       arrestedOn?: string;
       notice41A?: {
@@ -178,6 +408,8 @@ export default function AddCase() {
           address: "",
           mobileNumber: "",
           aadhaarNumber: "",
+          state: "",
+          district: "",
         },
       ],
     }));
@@ -262,31 +494,25 @@ export default function AddCase() {
   };
 
   const addSPReport = () => {
-    setFormData(prev => {
-      const existing = prev.reports?.spReports || [];
-      const nextIndex = existing.length + 1;
-      return {
-        ...prev,
-        reports: {
-          ...(prev.reports || {}),
-          spReports: [
-            ...existing,
-            {
-              rLabel: `R${nextIndex}`,
-              rDate: "",
-              prLabel: `PR${nextIndex}`,
-              prDate: "",
-              file: null,
-            },
-          ],
-        },
-      };
-    });
+    setFormData(prev => ({
+      ...prev,
+      reports: {
+        ...(prev.reports || {}),
+        spReports: [
+          ...(prev.reports?.spReports || []),
+          {
+            label: "",
+            date: "",
+            file: null,
+          },
+        ],
+      },
+    }));
   };
 
   const updateSPReport = (
     index: number,
-    field: "rLabel" | "rDate" | "prLabel" | "prDate",
+    field: "label" | "date",
     value: string
   ) => {
     setFormData(prev => ({
@@ -305,13 +531,50 @@ export default function AddCase() {
       ...prev,
       reports: {
         ...(prev.reports || {}),
-        spReports: (prev.reports?.spReports || [])
-          .filter((_, i) => i !== index)
-          .map((report, idx) => ({
-            ...report,
-            rLabel: report.rLabel || `R${idx + 1}`,
-            prLabel: report.prLabel || `PR${idx + 1}`,
-          })),
+        spReports: (prev.reports?.spReports || []).filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const addDSPReport = () => {
+    setFormData(prev => ({
+      ...prev,
+      reports: {
+        ...(prev.reports || {}),
+        dspReports: [
+          ...(prev.reports?.dspReports || []),
+          {
+            label: "",
+            date: "",
+            file: null,
+          },
+        ],
+      },
+    }));
+  };
+
+  const updateDSPReport = (
+    index: number,
+    field: "label" | "date",
+    value: string
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      reports: {
+        ...(prev.reports || {}),
+        dspReports: (prev.reports?.dspReports || []).map((report, i) =>
+          i === index ? { ...report, [field]: value } : report
+        ),
+      },
+    }));
+  };
+
+  const removeDSPReport = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      reports: {
+        ...(prev.reports || {}),
+        dspReports: (prev.reports?.dspReports || []).filter((_, i) => i !== index),
       },
     }));
   };
@@ -459,7 +722,7 @@ export default function AddCase() {
 
   const uploadSPReportFile = async (file: File, index: number, inputElement?: HTMLInputElement) => {
     try {
-      const fileData = await handleFileUpload(file, 'case-reports/sp-dsp-reports');
+      const fileData = await handleFileUpload(file, 'case-reports/sp-reports');
       setFormData(prev => ({
         ...prev,
         reports: {
@@ -471,7 +734,26 @@ export default function AddCase() {
       }));
       if (inputElement) inputElement.value = '';
     } catch (error: any) {
-      setError(`Failed to upload SP/DSP report file: ${error.message}`);
+      setError(`Failed to upload SP report file: ${error.message}`);
+      if (inputElement) inputElement.value = '';
+    }
+  };
+
+  const uploadDSPReportFile = async (file: File, index: number, inputElement?: HTMLInputElement) => {
+    try {
+      const fileData = await handleFileUpload(file, 'case-reports/dsp-reports');
+      setFormData(prev => ({
+        ...prev,
+        reports: {
+          ...prev.reports,
+          dspReports: prev.reports.dspReports.map((report, i) =>
+            i === index ? { ...report, file: fileData } : report
+          ),
+        },
+      }));
+      if (inputElement) inputElement.value = '';
+    } catch (error: any) {
+      setError(`Failed to upload DSP report file: ${error.message}`);
       if (inputElement) inputElement.value = '';
     }
   };
@@ -615,13 +897,19 @@ export default function AddCase() {
 
       const filteredSPReports = (formData.reports?.spReports || [])
         .map(report => ({
-          rLabel: report.rLabel?.trim() || "",
-          rDate: report.rDate || "",
-          prLabel: report.prLabel?.trim() || "",
-          prDate: report.prDate || "",
+          label: report.label?.trim() || "",
+          date: report.date || "",
           file: report.file || null,
         }))
-        .filter(report => report.rLabel || report.rDate || report.prLabel || report.prDate);
+        .filter(report => report.label || report.date);
+
+      const filteredDSPReports = (formData.reports?.dspReports || [])
+        .map(report => ({
+          label: report.label?.trim() || "",
+          date: report.date || "",
+          file: report.file || null,
+        }))
+        .filter(report => report.label || report.date);
 
       const cleanedData = cleanNestedDates({
         ...formData,
@@ -633,6 +921,7 @@ export default function AddCase() {
         reports: {
           ...(formData.reports || {}),
           spReports: filteredSPReports,
+          dspReports: filteredDSPReports,
         },
         pmReport: {
           ...formData.pmReport,
@@ -1076,6 +1365,40 @@ export default function AddCase() {
                         />
                       </div>
                       <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">State</label>
+                        <select
+                          value={accused.state || ""}
+                          onChange={(e) => {
+                            updateAccused(index, "state", e.target.value);
+                            updateAccused(index, "district", ""); // Reset district when state changes
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                        >
+                          <option value="">Select State</option>
+                          {INDIAN_STATES.map((state) => (
+                            <option key={state} value={state}>
+                              {state}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">District</label>
+                        <select
+                          value={accused.district || ""}
+                          onChange={(e) => updateAccused(index, "district", e.target.value)}
+                          disabled={!accused.state}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm disabled:bg-slate-100 disabled:cursor-not-allowed"
+                        >
+                          <option value="">Select District</option>
+                          {accused.state && DISTRICTS_BY_STATE[accused.state]?.map((district) => (
+                            <option key={district} value={district}>
+                              {district}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
                         <label className="block text-xs font-medium text-slate-700 mb-1">Arrest Date</label>
                         <input
                           type="date"
@@ -1315,9 +1638,10 @@ export default function AddCase() {
               Reports
             </h3>
             <div className="bg-white rounded-lg p-4 border border-slate-200 space-y-5">
+              {/* SP Reports Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">SP / DSP Reports</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Reports by SP</span>
                   <button
                     type="button"
                     onClick={addSPReport}
@@ -1327,19 +1651,19 @@ export default function AddCase() {
                       <line x1="12" y1="5" x2="12" y2="19" />
                       <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
-                    Add Report Pair
+                    Add SP Report
                   </button>
                 </div>
                 {(formData.reports.spReports || []).length === 0 ? (
                   <p className="text-sm text-slate-500 text-center py-2">
-                    No SP / DSP reports added. Click &quot;Add Report Pair&quot; to begin.
+                    No SP reports added. Click &quot;Add SP Report&quot; to begin.
                   </p>
                 ) : (
                   <div className="space-y-3">
                     {formData.reports.spReports.map((report, index) => (
                       <div key={index} className="border border-slate-200 rounded-lg bg-slate-50 p-3">
                         <div className="flex items-start justify-between mb-3">
-                          <h4 className="text-xs font-semibold text-slate-700">Report Pair {index + 1}</h4>
+                          <h4 className="text-xs font-semibold text-slate-700">SP Report {index + 1}</h4>
                           <button
                             type="button"
                             onClick={() => removeSPReport(index)}
@@ -1348,47 +1672,33 @@ export default function AddCase() {
                             Remove
                           </button>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">SP Label</label>
-                            <input
-                              type="text"
-                              value={report.rLabel}
-                              onChange={(e) => updateSPReport(index, "rLabel", e.target.value)}
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Report Label</label>
+                            <select
+                              value={report.label}
+                              onChange={(e) => updateSPReport(index, "label", e.target.value)}
                               className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                              placeholder={`R${index + 1}`}
-                            />
+                            >
+                              <option value="">Select Report</option>
+                              <option value="R1">R1</option>
+                              <option value="R2">R2</option>
+                              <option value="R3">R3</option>
+                              <option value="R4">R4</option>
+                              <option value="R5">R5</option>
+                            </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">SP Report Date</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
                             <input
                               type="date"
-                              value={report.rDate}
-                              onChange={(e) => updateSPReport(index, "rDate", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">DSP Label</label>
-                            <input
-                              type="text"
-                              value={report.prLabel}
-                              onChange={(e) => updateSPReport(index, "prLabel", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                              placeholder={`PR${index + 1}`}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">DSP Report Date</label>
-                            <input
-                              type="date"
-                              value={report.prDate}
-                              onChange={(e) => updateSPReport(index, "prDate", e.target.value)}
+                              value={report.date}
+                              onChange={(e) => updateSPReport(index, "date", e.target.value)}
                               className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             />
                           </div>
                         </div>
-                        {/* File Upload for Individual SP/DSP Report Pair */}
+                        {/* File Upload for SP Report */}
                         <div className="border-t border-slate-200 pt-3 mt-3">
                           <label className="block text-xs font-medium text-slate-700 mb-2">Upload Report File (PDF or Image)</label>
                           {report.file ? (
@@ -1437,6 +1747,8 @@ export default function AddCase() {
                   </div>
                 )}
               </div>
+              
+              {/* Supervision (after SP Reports) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Supervision Date</label>
@@ -1447,6 +1759,119 @@ export default function AddCase() {
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
+              </div>
+
+              {/* DSP Reports Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Reports by DSP</span>
+                  <button
+                    type="button"
+                    onClick={addDSPReport}
+                    className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add DSP Report
+                  </button>
+                </div>
+                {(formData.reports.dspReports || []).length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-2">
+                    No DSP reports added. Click &quot;Add DSP Report&quot; to begin.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {formData.reports.dspReports.map((report, index) => (
+                      <div key={index} className="border border-slate-200 rounded-lg bg-slate-50 p-3">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="text-xs font-semibold text-slate-700">DSP Report {index + 1}</h4>
+                          <button
+                            type="button"
+                            onClick={() => removeDSPReport(index)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Report Label</label>
+                            <select
+                              value={report.label}
+                              onChange={(e) => updateDSPReport(index, "label", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            >
+                              <option value="">Select Report</option>
+                              <option value="PR1">PR1</option>
+                              <option value="PR2">PR2</option>
+                              <option value="PR3">PR3</option>
+                              <option value="PR4">PR4</option>
+                              <option value="PR5">PR5</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
+                            <input
+                              type="date"
+                              value={report.date}
+                              onChange={(e) => updateDSPReport(index, "date", e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                          </div>
+                        </div>
+                        {/* File Upload for DSP Report */}
+                        <div className="border-t border-slate-200 pt-3 mt-3">
+                          <label className="block text-xs font-medium text-slate-700 mb-2">Upload Report File (PDF or Image)</label>
+                          {report.file ? (
+                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-sm text-slate-700">{report.file.original_filename}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (report.file?.public_id) {
+                                    await deleteFile(report.file.public_id);
+                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    reports: {
+                                      ...prev.reports,
+                                      dspReports: prev.reports.dspReports.map((r, i) =>
+                                        i === index ? { ...r, file: null } : r
+                                      ),
+                                    },
+                                  }));
+                                }}
+                                className="text-xs text-red-600 hover:text-red-800"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) uploadDSPReportFile(file, index, e.target);
+                              }}
+                              className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Other Reports */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">FPR Date</label>
                   <input
