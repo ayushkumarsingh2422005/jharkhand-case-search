@@ -1,4 +1,5 @@
 "use client";
+import { SuperAdminGuard } from "../../../components/AuthGuard";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -1240,7 +1241,8 @@ export default function EditCase() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6">
+    <SuperAdminGuard>
+      <div className="mx-auto max-w-7xl p-4 md:p-6">
       {/* Breadcrumbs */}
       <div className="mb-4 text-sm text-slate-600">
         <Link href="/" className="text-blue-700 hover:underline">Search</Link>
@@ -3038,7 +3040,8 @@ export default function EditCase() {
           </div>
         </div>
       </form>
-    </div>
+      </div>
+    </SuperAdminGuard>
   );
 }
 

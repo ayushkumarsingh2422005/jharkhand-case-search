@@ -8,9 +8,31 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// POST - Upload file to Cloudinary
+// POST - Upload file to Cloudinary (Authenticated users only)
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please login.' },
+        { status: 401 }
+      );
+    }
+
+    const jwt = require('jsonwebtoken');
+    try {
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+      );
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Invalid token.' },
+        { status: 401 }
+      );
+    }
+
     // Check if Cloudinary is configured
     if (!process.env.CLOUDINARY_CLOUD_NAME || 
         !process.env.CLOUDINARY_API_KEY || 

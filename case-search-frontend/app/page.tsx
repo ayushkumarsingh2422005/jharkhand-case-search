@@ -1,6 +1,8 @@
 "use client";
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { AuthGuard } from "../components/AuthGuard";
+import { useAuth } from "../contexts/AuthContext";
 
 type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
@@ -331,6 +333,7 @@ const DISTRICTS_BY_STATE: Record<string, string[]> = {
 };
 
 export default function Home() {
+  const { user } = useAuth();
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => Array.from({ length: currentYear - 1999 }, (_, i) => 2000 + i), [currentYear]);
 
@@ -1686,46 +1689,67 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen">
+    <AuthGuard>
+      <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-blue-900/30">
         <div className="bg-white border-b border-slate-200 px-4 py-3">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <h1 className="text-xl font-bold text-slate-900">Case Search System</h1>
             <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+              {user?.role === "SuperAdmin" && (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" />
+                      <rect x="14" y="3" width="7" height="7" />
+                      <rect x="14" y="14" width="7" height="7" />
+                      <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/admin"
+                    className="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center gap-1"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                      <path d="M2 17l10 5 10-5" />
+                      <path d="M2 12l10 5 10-5" />
+                    </svg>
+                    Admin
+                  </Link>
+                </>
+              )}
+              <button
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  window.location.href = "/login";
+                }}
+                className="text-sm text-red-700 hover:text-red-800 font-medium flex items-center gap-1"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7" />
-                  <rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" />
-                  <rect x="3" y="14" width="7" height="7" />
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
                 </svg>
-                Dashboard
-              </Link>
-              <Link
-                href="/admin"
-                className="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center gap-1"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-                Admin
-              </Link>
-              <Link
-                href="/add"
-                className="text-sm text-white bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add Case
-              </Link>
+                Logout
+              </button>
+              {user?.role === "SuperAdmin" && (
+                <Link
+                  href="/add"
+                  className="text-sm text-white bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Case
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -1739,8 +1763,8 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <div className="text-sm font-medium">SI Anil Kumar</div>
-                <div className="text-xs/5 text-blue-100">Investigating Officer</div>
+                <div className="text-sm font-medium">{user?.email || "Loading..."}</div>
+                <div className="text-xs/5 text-blue-100">{user?.role || ""}</div>
               </div>
               <div className="h-10 w-10 rounded-full bg-white/10 grid place-content-center">
                 <svg className="h-5 w-5 text-blue-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -3013,6 +3037,7 @@ export default function Home() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

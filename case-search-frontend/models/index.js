@@ -3,6 +3,7 @@ const Case = require('./Case');
 const Note = require('./Note');
 const ReasonForPendency = require('./ReasonForPendency');
 const CrimeHead = require('./CrimeHead');
+const User = require('./User');
 
 // Database connection function
 const connectDB = async () => {
@@ -40,5 +41,6 @@ module.exports = {
   Note,
   ReasonForPendency,
   CrimeHead,
+  User,
 };
 

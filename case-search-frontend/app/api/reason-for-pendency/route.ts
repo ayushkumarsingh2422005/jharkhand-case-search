@@ -3,8 +3,30 @@ import { connectDB, ReasonForPendency } from '../../../models';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please login.' },
+        { status: 401 }
+      );
+    }
+
+    const jwt = require('jsonwebtoken');
+    try {
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+      );
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Invalid token.' },
+        { status: 401 }
+      );
+    }
+
     await connectDB();
-    
+
     const searchParams = request.nextUrl.searchParams;
     const includeInactive = searchParams.get('includeInactive') === 'true';
     

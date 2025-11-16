@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { generateCasePDF } from "@/lib/generateCasePDF";
+import { AuthGuard } from "../../../components/AuthGuard";
+import { useAuth } from "../../../contexts/AuthContext";
 
 type AccusedStatus = "True" | "False" | "Decision Pending" | "Arrested" | "Not Arrested";
 type CaseStatus = "Disposed" | "Under investigation";
@@ -61,6 +63,7 @@ const REASON_FOR_PENDENCY_OPTIONS = [
 
 export default function CaseDetail() {
   const params = useParams<{ caseId: string | string[] | undefined }>();
+  const { user } = useAuth();
   // Handle caseId which could be string, array, or undefined
   const caseId = Array.isArray(params?.caseId) ? params.caseId[0] : params?.caseId;
   const caseNo = caseId && typeof caseId === 'string' ? caseId.replaceAll("-", "/") : "";
@@ -564,12 +567,17 @@ export default function CaseDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6">
+    <AuthGuard>
+      <div className="mx-auto max-w-7xl p-4 md:p-6">
       {/* Breadcrumbs */}
       <div className="mb-4 text-sm text-slate-600">
         <Link href="/" className="text-blue-700 hover:underline">Search</Link>
-        <span className="mx-2">/</span>
-        <Link href="/dashboard" className="text-blue-700 hover:underline">Dashboard</Link>
+        {user?.role === "SuperAdmin" && (
+          <>
+            <span className="mx-2">/</span>
+            <Link href="/dashboard" className="text-blue-700 hover:underline">Dashboard</Link>
+          </>
+        )}
         <span className="mx-2">/</span>
         <span className="font-medium">Case Detail</span>
       </div>
@@ -1272,7 +1280,8 @@ export default function CaseDetail() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
 

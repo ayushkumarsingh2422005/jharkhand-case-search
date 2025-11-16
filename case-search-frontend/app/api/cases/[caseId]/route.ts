@@ -2,12 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, Case } from '../../../../models';
 import mongoose from 'mongoose';
 
-// GET - Fetch a single case by ID
+// GET - Fetch a single case by ID (Authenticated users only)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ caseId: string }> }
 ) {
   try {
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please login.' },
+        { status: 401 }
+      );
+    }
+
+    const jwt = require('jsonwebtoken');
+    try {
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+      );
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Invalid token.' },
+        { status: 401 }
+      );
+    }
+
     await connectDB();
 
     const { caseId } = await params;
@@ -38,13 +60,36 @@ export async function GET(
   }
 }
 
-// PUT - Update a case
+// PUT - Update a case (SuperAdmin only)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ caseId: string }> }
 ) {
   try {
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please login.' },
+        { status: 401 }
+      );
+    }
+
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+    ) as { userId: string; email: string; role: string };
+
     await connectDB();
+    const User = require('../../../../models').User;
+    const user = await User.findById(decoded.userId);
+    if (!user || user.role !== 'SuperAdmin') {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden. SuperAdmin access required.' },
+        { status: 403 }
+      );
+    }
 
     const { caseId } = await params;
     const body = await request.json();
@@ -87,13 +132,36 @@ export async function PUT(
   }
 }
 
-// DELETE - Delete a case
+// DELETE - Delete a case (SuperAdmin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ caseId: string }> }
 ) {
   try {
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Please login.' },
+        { status: 401 }
+      );
+    }
+
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+    ) as { userId: string; email: string; role: string };
+
     await connectDB();
+    const User = require('../../../../models').User;
+    const user = await User.findById(decoded.userId);
+    if (!user || user.role !== 'SuperAdmin') {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden. SuperAdmin access required.' },
+        { status: 403 }
+      );
+    }
 
     const { caseId } = await params;
 
