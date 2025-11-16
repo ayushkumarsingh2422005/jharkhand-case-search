@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
-type CaseStatus = "Disposed" | "Under investigation" | "Decision Pending";
+type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
 type SrNsr = "SR" | "NSR";
 type Priority = "Under monitoring" | "Normal";
@@ -16,15 +16,6 @@ const POLICE_STATIONS = [
   "South Sector PS",
   "Harbour PS",
   "Airport PS",
-];
-
-const CRIME_HEADS = [
-  "Theft",
-  "Robbery",
-  "Assault",
-  "Cyber Crime",
-  "Narcotics",
-  "Fraud",
 ];
 
 const INJURY_TYPES = [
@@ -269,6 +260,8 @@ export default function EditCase() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [crimeHeads, setCrimeHeads] = useState<string[]>([]);
+  const [reasonForPendencyOptions, setReasonForPendencyOptions] = useState<string[]>([]);
   
   // Notes state
   type Note = {
@@ -292,6 +285,7 @@ export default function EditCase() {
     punishmentCategory: "≤7 yrs" as "≤7 yrs" | ">7 yrs",
     caseDate: "",
     caseStatus: "Under investigation" as CaseStatus,
+    decisionPending: false,
     investigationStatus: "" as InvestigationStatus | "",
     srNsr: "" as SrNsr | "",
     priority: "Normal" as Priority,
@@ -324,6 +318,7 @@ export default function EditCase() {
     },
     finalChargesheetSubmitted: false,
     finalChargesheetSubmissionDate: "",
+    chargesheetDeadlineType: "60" as "60" | "90",
     prosecutionSanction: [] as Array<{
       type: string;
       submissionDate: string;
@@ -400,6 +395,30 @@ export default function EditCase() {
       };
     }>,
   });
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        // Fetch crime heads
+        const crimeHeadsResponse = await fetch('/api/crime-heads');
+        const crimeHeadsData = await crimeHeadsResponse.json();
+        if (crimeHeadsData.success) {
+          setCrimeHeads(crimeHeadsData.data);
+        }
+
+        // Fetch reasons for pendency
+        const reasonsResponse = await fetch('/api/reason-for-pendency');
+        const reasonsData = await reasonsResponse.json();
+        if (reasonsData.success) {
+          setReasonForPendencyOptions(reasonsData.data);
+        }
+      } catch (error) {
+        console.error('Error fetching options:', error);
+      }
+    };
+
+    fetchOptions();
+  }, []);
 
   useEffect(() => {
     if (caseId && typeof caseId === 'string') {
@@ -498,7 +517,8 @@ export default function EditCase() {
           crimeSection: fetchedCaseData.crimeSection || fetchedCaseData.section || "",
           punishmentCategory: fetchedCaseData.punishmentCategory || "≤7 yrs",
           caseDate: fetchedCaseData.caseDate ? new Date(fetchedCaseData.caseDate).toISOString().split('T')[0] : "",
-          caseStatus: fetchedCaseData.caseStatus || "Under investigation",
+          caseStatus: (fetchedCaseData.caseStatus === "Decision Pending" ? "Under investigation" : fetchedCaseData.caseStatus) || "Under investigation",
+          decisionPending: fetchedCaseData.decisionPending || (fetchedCaseData.caseStatus === "Decision Pending"),
           investigationStatus: fetchedCaseData.investigationStatus || "",
           srNsr: fetchedCaseData.srNsr || "",
           priority: fetchedCaseData.priority || "Normal",
@@ -528,6 +548,7 @@ export default function EditCase() {
           publicPetitionFile: fetchedCaseData.publicPetitionFile || null,
           finalChargesheetSubmitted: fetchedCaseData.finalChargesheetSubmitted || false,
           finalChargesheetSubmissionDate: fetchedCaseData.finalChargesheetSubmissionDate ? new Date(fetchedCaseData.finalChargesheetSubmissionDate).toISOString().split('T')[0] : "",
+          chargesheetDeadlineType: (fetchedCaseData.chargesheetDeadlineType || "60") as "60" | "90",
           prosecutionSanction: fetchedCaseData.prosecutionSanction && Array.isArray(fetchedCaseData.prosecutionSanction)
             ? fetchedCaseData.prosecutionSanction.map((sanction: any) => ({
                 type: sanction.type || "",
@@ -1309,20 +1330,18 @@ export default function EditCase() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Crime Head *</label>
-                <input
-                  list="crime-heads"
+                <select
                   name="crimeHead"
                   value={formData.crimeHead}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                  placeholder="Select or type"
-                />
-                <datalist id="crime-heads">
-                  {CRIME_HEADS.map((c) => (
-                    <option key={c} value={c} />
+                >
+                  <option value="">Select Crime Head</option>
+                  {crimeHeads.map((c) => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Section *</label>
@@ -1370,8 +1389,19 @@ export default function EditCase() {
                 >
                   <option value="Under investigation">Under investigation</option>
                   <option value="Disposed">Disposed</option>
-                  <option value="Decision Pending">Decision Pending</option>
                 </select>
+              </div>
+              <div>
+                <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="decisionPending"
+                    checked={formData.decisionPending}
+                    onChange={(e) => setFormData(prev => ({ ...prev, decisionPending: e.target.checked }))}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Decision Pending
+                </label>
               </div>
               {formData.caseStatus === "Under investigation" && (
                 <div>
@@ -1400,6 +1430,38 @@ export default function EditCase() {
                   <option value="SR">SR</option>
                   <option value="NSR">NSR</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Reason for Pendency</label>
+                <div className="space-y-2 border border-slate-300 rounded-lg p-3 bg-white max-h-48 overflow-y-auto">
+                  {reasonForPendencyOptions.length === 0 ? (
+                    <p className="text-sm text-slate-500">Loading options...</p>
+                  ) : (
+                    reasonForPendencyOptions.map((reason) => (
+                    <label key={reason} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.reasonForPendency.includes(reason)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              reasonForPendency: [...prev.reasonForPendency, reason],
+                            }));
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              reasonForPendency: prev.reasonForPendency.filter(r => r !== reason),
+                            }));
+                          }
+                        }}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      {reason}
+                    </label>
+                    ))
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
@@ -2284,6 +2346,20 @@ export default function EditCase() {
                 </div>
               </div>
               <div className="pt-3 border-t border-slate-200 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Chargesheet Deadline Type *</label>
+                  <select
+                    name="chargesheetDeadlineType"
+                    value={formData.chargesheetDeadlineType}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="60">60 Days</option>
+                    <option value="90">90 Days</option>
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">Chargesheet must be filed within this period from arrest date</p>
+                </div>
                 <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"

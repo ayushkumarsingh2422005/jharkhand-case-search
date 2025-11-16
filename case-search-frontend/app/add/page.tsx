@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-type CaseStatus = "Disposed" | "Under investigation" | "Decision Pending";
+type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
 type SrNsr = "SR" | "NSR";
 type Priority = "Under monitoring" | "Normal";
@@ -16,15 +16,6 @@ const POLICE_STATIONS = [
   "South Sector PS",
   "Harbour PS",
   "Airport PS",
-];
-
-const CRIME_HEADS = [
-  "Theft",
-  "Robbery",
-  "Assault",
-  "Cyber Crime",
-  "Narcotics",
-  "Fraud",
 ];
 
 const INJURY_TYPES = [
@@ -265,6 +256,32 @@ export default function AddCase() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [crimeHeads, setCrimeHeads] = useState<string[]>([]);
+  const [reasonForPendencyOptions, setReasonForPendencyOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        // Fetch crime heads
+        const crimeHeadsResponse = await fetch('/api/crime-heads');
+        const crimeHeadsData = await crimeHeadsResponse.json();
+        if (crimeHeadsData.success) {
+          setCrimeHeads(crimeHeadsData.data);
+        }
+
+        // Fetch reasons for pendency
+        const reasonsResponse = await fetch('/api/reason-for-pendency');
+        const reasonsData = await reasonsResponse.json();
+        if (reasonsData.success) {
+          setReasonForPendencyOptions(reasonsData.data);
+        }
+      } catch (error) {
+        console.error('Error fetching options:', error);
+      }
+    };
+
+    fetchOptions();
+  }, []);
 
   const [formData, setFormData] = useState({
     caseNo: "",
@@ -275,6 +292,7 @@ export default function AddCase() {
     punishmentCategory: "≤7 yrs" as "≤7 yrs" | ">7 yrs",
     caseDate: "",
     caseStatus: "Under investigation" as CaseStatus,
+    decisionPending: false,
     investigationStatus: "" as InvestigationStatus | "",
     srNsr: "" as SrNsr | "",
     priority: "Normal" as Priority,
@@ -307,6 +325,7 @@ export default function AddCase() {
     },
     finalChargesheetSubmitted: false,
     finalChargesheetSubmissionDate: "",
+    chargesheetDeadlineType: "60" as "60" | "90",
     prosecutionSanction: [] as Array<{
       type: string;
       submissionDate: string;
@@ -1040,20 +1059,18 @@ export default function AddCase() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Crime Head *</label>
-                <input
-                  list="crime-heads"
+                <select
                   name="crimeHead"
                   value={formData.crimeHead}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                  placeholder="Select or type"
-                />
-                <datalist id="crime-heads">
-                  {CRIME_HEADS.map((c) => (
-                    <option key={c} value={c} />
+                >
+                  <option value="">Select Crime Head</option>
+                  {crimeHeads.map((c) => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Section *</label>
@@ -1101,8 +1118,20 @@ export default function AddCase() {
                 >
                   <option value="Under investigation">Under investigation</option>
                   <option value="Disposed">Disposed</option>
-                  <option value="Decision Pending">Decision Pending</option>
                 </select>
+              </div>
+              <div>
+                <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Pending</label>
+                  <input
+                    type="checkbox"
+                    name="decisionPending"
+                    checked={formData.decisionPending}
+                    onChange={(e) => setFormData(prev => ({ ...prev, decisionPending: e.target.checked }))}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Decision Pending
+                </label>
               </div>
               {formData.caseStatus === "Under investigation" && (
                 <div>
@@ -1131,6 +1160,38 @@ export default function AddCase() {
                   <option value="SR">SR</option>
                   <option value="NSR">NSR</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Reason for Pendency</label>
+                <div className="space-y-2 border border-slate-300 rounded-lg p-3 bg-white max-h-48 overflow-y-auto">
+                  {reasonForPendencyOptions.length === 0 ? (
+                    <p className="text-sm text-slate-500">Loading options...</p>
+                  ) : (
+                    reasonForPendencyOptions.map((reason) => (
+                    <label key={reason} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.reasonForPendency.includes(reason)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              reasonForPendency: [...prev.reasonForPendency, reason],
+                            }));
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              reasonForPendency: prev.reasonForPendency.filter(r => r !== reason),
+                            }));
+                          }
+                        }}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      {reason}
+                    </label>
+                    ))
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
@@ -1673,12 +1734,12 @@ export default function AddCase() {
                           </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Label</label>
                             <select
                               value={report.label}
                               onChange={(e) => updateSPReport(index, "label", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             >
                               <option value="">Select Report</option>
                               <option value="R1">R1</option>
@@ -1687,16 +1748,16 @@ export default function AddCase() {
                               <option value="R4">R4</option>
                               <option value="R5">R5</option>
                             </select>
-                          </div>
-                          <div>
+                </div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
-                            <input
-                              type="date"
+                  <input
+                    type="date"
                               value={report.date}
                               onChange={(e) => updateSPReport(index, "date", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                          </div>
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
                         </div>
                         {/* File Upload for SP Report */}
                         <div className="border-t border-slate-200 pt-3 mt-3">
@@ -1731,7 +1792,7 @@ export default function AddCase() {
                               </button>
                             </div>
                           ) : (
-                            <input
+                  <input
                               type="file"
                               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
                               onChange={(e) => {
@@ -1741,7 +1802,7 @@ export default function AddCase() {
                               className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                             />
                           )}
-                        </div>
+                </div>
                       </div>
                     ))}
                   </div>
@@ -1796,12 +1857,12 @@ export default function AddCase() {
                           </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Label</label>
                             <select
                               value={report.label}
                               onChange={(e) => updateDSPReport(index, "label", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             >
                               <option value="">Select Report</option>
                               <option value="PR1">PR1</option>
@@ -1810,16 +1871,16 @@ export default function AddCase() {
                               <option value="PR4">PR4</option>
                               <option value="PR5">PR5</option>
                             </select>
-                          </div>
-                          <div>
+                </div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
-                            <input
-                              type="date"
+                  <input
+                    type="date"
                               value={report.date}
                               onChange={(e) => updateDSPReport(index, "date", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                          </div>
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
                         </div>
                         {/* File Upload for DSP Report */}
                         <div className="border-t border-slate-200 pt-3 mt-3">
@@ -1854,7 +1915,7 @@ export default function AddCase() {
                               </button>
                             </div>
                           ) : (
-                            <input
+                  <input
                               type="file"
                               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
                               onChange={(e) => {
@@ -1864,7 +1925,7 @@ export default function AddCase() {
                               className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                             />
                           )}
-                        </div>
+                </div>
                       </div>
                     ))}
                   </div>
@@ -2014,6 +2075,20 @@ export default function AddCase() {
                 </div>
               </div>
               <div className="pt-3 border-t border-slate-200 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Chargesheet Deadline Type *</label>
+                  <select
+                    name="chargesheetDeadlineType"
+                    value={formData.chargesheetDeadlineType}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  >
+                    <option value="60">60 Days</option>
+                    <option value="90">90 Days</option>
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">Chargesheet must be filed within this period from arrest date</p>
+                </div>
                 <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"
@@ -2277,7 +2352,7 @@ export default function AddCase() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <span className="text-sm text-slate-700">{fslEntry.file.original_filename}</span>
-                              </div>
+                      </div>
                               <button
                                 type="button"
                                 onClick={async () => {
@@ -2385,7 +2460,7 @@ export default function AddCase() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span className="text-sm text-slate-700">{formData.injuryReport.file.original_filename}</span>
-                      </div>
+              </div>
                       <button
                         type="button"
                         onClick={async () => {
@@ -2483,7 +2558,7 @@ export default function AddCase() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span className="text-sm text-slate-700">{formData.pmReport.file.original_filename}</span>
-                      </div>
+              </div>
                       <button
                         type="button"
                         onClick={async () => {

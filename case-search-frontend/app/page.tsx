@@ -2,7 +2,7 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 
-type CaseStatus = "Disposed" | "Under investigation" | "Decision Pending";
+type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
 type Priority = "Under monitoring" | "Normal";
 
@@ -81,13 +81,16 @@ type CaseRow = {
   caseNo: string;
   year: number;
   policeStation: string;
+  crimeHead?: string;
   crimeSection: string;
   punishmentCategory: "\u22647 yrs" | ">7 yrs";
   accused: Accused[];
   caseStatus: CaseStatus;
+  decisionPending?: boolean;
   investigationStatus?: InvestigationStatus;
   priority?: Priority;
   isPropertyProfessionalCrime?: boolean;
+  reasonForPendency?: string[];
   reports?: ReportInfo;
   finalChargesheetSubmitted?: boolean;
   finalChargesheetSubmissionDate?: string;
@@ -100,26 +103,6 @@ const POLICE_STATIONS = [
   "South Sector PS",
   "Harbour PS",
   "Airport PS",
-];
-
-const CRIME_HEADS = [
-  "Theft",
-  "Robbery",
-  "Assault",
-  "Cyber Crime",
-  "Narcotics",
-  "Fraud",
-];
-
-const REASON_FOR_PENDENCY_OPTIONS = [
-  "Awaiting prosecution sanction",
-  "Awaiting FSL report",
-  "Awaiting charge sheet submission",
-  "Awaiting court hearing",
-  "Awaiting witness statement",
-  "Awaiting medical report",
-  "Awaiting investigation completion",
-  "Other",
 ];
 
 const INDIAN_STATES = [
@@ -352,7 +335,8 @@ export default function Home() {
   const years = useMemo(() => Array.from({ length: currentYear - 1999 }, (_, i) => 2000 + i), [currentYear]);
 
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [reasonForPendencyOptions, setReasonForPendencyOptions] = useState<string[]>(REASON_FOR_PENDENCY_OPTIONS);
+  const [crimeHeads, setCrimeHeads] = useState<string[]>([]);
+  const [reasonForPendencyOptions, setReasonForPendencyOptions] = useState<string[]>([]);
   const [newReasonInput, setNewReasonInput] = useState("");
   const [showAddReasonModal, setShowAddReasonModal] = useState(false);
   
@@ -498,6 +482,27 @@ export default function Home() {
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        // Fetch crime heads
+        const crimeHeadsResponse = await fetch('/api/crime-heads');
+        const crimeHeadsData = await crimeHeadsResponse.json();
+        if (crimeHeadsData.success) {
+          setCrimeHeads(crimeHeadsData.data);
+        }
+
+        // Fetch reasons for pendency
+        const reasonsResponse = await fetch('/api/reason-for-pendency');
+        const reasonsData = await reasonsResponse.json();
+        if (reasonsData.success) {
+          setReasonForPendencyOptions(reasonsData.data);
+        }
+      } catch (error) {
+        console.error('Error fetching filter options:', error);
+      }
+    };
+
+    fetchOptions();
     fetchCases();
   }, []);
 
@@ -509,21 +514,35 @@ export default function Home() {
       
       if (result.success) {
         // Transform API data to match CaseRow type
-        const transformedData: CaseRow[] = result.data.map((item: any) => ({
+        const transformedData: CaseRow[] = result.data.map((item: any) => {
+          // Handle legacy data: if caseStatus is "Decision Pending", convert to decisionPending boolean
+          let caseStatus: CaseStatus = item.caseStatus as CaseStatus;
+          let decisionPending = item.decisionPending || false;
+          
+          if (item.caseStatus === "Decision Pending") {
+            caseStatus = "Under investigation"; // Default to "Under investigation" for legacy data
+            decisionPending = true;
+          }
+          
+          return {
           caseNo: item.caseNo,
           year: item.year,
           policeStation: item.policeStation,
+            crimeHead: item.crimeHead || "",
           crimeSection: item.crimeSection || item.section || "",
           punishmentCategory: item.punishmentCategory as "≤7 yrs" | ">7 yrs",
           accused: item.accused || [],
-          caseStatus: item.caseStatus as CaseStatus,
+            caseStatus: caseStatus,
+            decisionPending: decisionPending,
           investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
           priority: item.priority as Priority | undefined,
           isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
+            reasonForPendency: item.reasonForPendency || [],
           reports: item.reports,
           finalChargesheetSubmitted: item.finalChargesheetSubmitted || false,
           finalChargesheetSubmissionDate: item.finalChargesheetSubmissionDate,
-        }));
+          };
+        });
         setData(transformedData);
       }
     } catch (error) {
@@ -595,7 +614,8 @@ export default function Home() {
       policeStation: "East Division PS",
       crimeSection: "376 IPC",
       punishmentCategory: ">7 yrs",
-      caseStatus: "Decision Pending",
+      caseStatus: "Under investigation",
+      decisionPending: true,
       priority: "Under monitoring",
       accused: [
         { name: "Vikram Singh", status: "Decision pending" },
@@ -727,7 +747,8 @@ export default function Home() {
       policeStation: "North Zone PS",
       crimeSection: "307 IPC",
       punishmentCategory: ">7 yrs",
-      caseStatus: "Decision Pending",
+      caseStatus: "Under investigation",
+      decisionPending: true,
       priority: "Under monitoring",
       isPropertyProfessionalCrime: false,
       accused: [
@@ -993,7 +1014,8 @@ export default function Home() {
       policeStation: "Airport PS",
       crimeSection: "417 IPC",
       punishmentCategory: "\u22647 yrs",
-      caseStatus: "Decision Pending",
+      caseStatus: "Under investigation",
+      decisionPending: true,
       priority: "Normal",
       isPropertyProfessionalCrime: false,
       accused: [
@@ -1265,7 +1287,7 @@ export default function Home() {
         // Basic filters
         if (filters.caseNo && !row.caseNo.toLowerCase().includes(filters.caseNo.toLowerCase())) return null;
         if (filters.policeStation && row.policeStation !== filters.policeStation) return null;
-        if (filters.crimeHead && !row.crimeSection.toLowerCase().includes(filters.crimeHead.toLowerCase())) return null;
+        if (filters.crimeHead && (!row.crimeHead || row.crimeHead !== filters.crimeHead)) return null;
         if (filters.section && !row.crimeSection.toLowerCase().includes(filters.section.toLowerCase())) return null;
         
         // Year filters
@@ -1289,7 +1311,7 @@ export default function Home() {
         if (filters.caseStatus.length > 0 && !filters.caseStatus.includes(row.caseStatus)) return null;
         
         // Decision Pending filter (separate checkbox)
-        if (filters.decisionPending && row.caseStatus !== "Decision Pending") return null;
+        if (filters.decisionPending && !row.decisionPending) return null;
         
         // Investigation status filter (only for "Under investigation" cases)
         if (filters.investigationStatus.length > 0) {
@@ -1304,6 +1326,15 @@ export default function Home() {
         
         // Property/Professional crime filter
         if (filters.isPropertyProfessionalCrime && !row.isPropertyProfessionalCrime) return null;
+        
+        // Reason for Pendency filter
+        if (filters.reasonForPendency.length > 0) {
+          const caseReasons = row.reasonForPendency || [];
+          const hasMatchingReason = filters.reasonForPendency.some(filterReason => 
+            caseReasons.includes(filterReason)
+          );
+          if (!hasMatchingReason) return null;
+        }
         
         // Accused count filters
         const totalAccused = row.accused.length;
@@ -1675,6 +1706,17 @@ export default function Home() {
                 Dashboard
               </Link>
               <Link
+                href="/admin"
+                className="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center gap-1"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
+                Admin
+              </Link>
+              <Link
                 href="/add"
                 className="text-sm text-white bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
               >
@@ -1749,12 +1791,16 @@ export default function Home() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Crime Head</label>
-                  <input list="crime-heads" value={filters.crimeHead} onChange={(e) => setFilters({ ...filters, crimeHead: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Select or type" />
-                  <datalist id="crime-heads">
-                    {CRIME_HEADS.map((c) => (
-                      <option key={c} value={c} />
+                  <select
+                    value={filters.crimeHead}
+                    onChange={(e) => setFilters({ ...filters, crimeHead: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                  >
+                    <option value="">All Crime Heads</option>
+                    {crimeHeads.map((c) => (
+                      <option key={c} value={c}>{c}</option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Section</label>
@@ -1972,6 +2018,10 @@ export default function Home() {
                       + Add
                     </button>
                   </div>
+                  {reasonForPendencyOptions.length === 0 ? (
+                    <p className="text-sm text-slate-500 py-2">Loading options...</p>
+                  ) : (
+                    <>
                   <select
                     multiple
                     value={filters.reasonForPendency}
@@ -1987,6 +2037,8 @@ export default function Home() {
                     ))}
                   </select>
                   <p className="text-xs text-slate-500 mt-1.5">Hold Ctrl/Cmd to select multiple</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -2022,20 +2074,20 @@ export default function Home() {
                   {/* Basic Accused Information */}
                   <div>
                     <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Basic Information</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Name</label>
-                        <input value={filters.accusedName} onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter name" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Status</label>
-                        <select value={filters.accusedStatus} onChange={(e) => setFilters({ ...filters, accusedStatus: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                          <option value="">All Status</option>
-                          <option>Arrested</option>
-                          <option>Not arrested</option>
-                          <option>Decision pending</option>
-                        </select>
-                      </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Name</label>
+                  <input value={filters.accusedName} onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Status</label>
+                  <select value={filters.accusedStatus} onChange={(e) => setFilters({ ...filters, accusedStatus: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                    <option value="">All Status</option>
+                    <option>Arrested</option>
+                    <option>Not arrested</option>
+                    <option>Decision pending</option>
+                  </select>
+                </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">Address</label>
                         <input value={filters.accusedAddress} onChange={(e) => setFilters({ ...filters, accusedAddress: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter address" />
@@ -2074,41 +2126,41 @@ export default function Home() {
                     <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Accused Counts</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Accused Count</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                            <input type="number" min="0" value={filters.accusedCountMin} onChange={(e) => setFilters({ ...filters, accusedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                            <input type="number" min="0" value={filters.accusedCountMax} onChange={(e) => setFilters({ ...filters, accusedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
-                          </div>
-                        </div>
-                      </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Accused Count</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                      <input type="number" min="0" value={filters.accusedCountMin} onChange={(e) => setFilters({ ...filters, accusedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                      <input type="number" min="0" value={filters.accusedCountMax} onChange={(e) => setFilters({ ...filters, accusedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                    </div>
+                  </div>
+                </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrested Count</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                            <input type="number" min="0" value={filters.arrestedCountMin} onChange={(e) => setFilters({ ...filters, arrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                            <input type="number" min="0" value={filters.arrestedCountMax} onChange={(e) => setFilters({ ...filters, arrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
-                          </div>
-                        </div>
-                      </div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrested Count</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                      <input type="number" min="0" value={filters.arrestedCountMin} onChange={(e) => setFilters({ ...filters, arrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                      <input type="number" min="0" value={filters.arrestedCountMax} onChange={(e) => setFilters({ ...filters, arrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                    </div>
+                  </div>
+                </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Unarrested Count</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                            <input type="number" min="0" value={filters.unarrestedCountMin} onChange={(e) => setFilters({ ...filters, unarrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                            <input type="number" min="0" value={filters.unarrestedCountMax} onChange={(e) => setFilters({ ...filters, unarrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Unarrested Count</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                      <input type="number" min="0" value={filters.unarrestedCountMin} onChange={(e) => setFilters({ ...filters, unarrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                      <input type="number" min="0" value={filters.unarrestedCountMax} onChange={(e) => setFilters({ ...filters, unarrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
                           </div>
                         </div>
                       </div>
@@ -2328,9 +2380,9 @@ export default function Home() {
                         <div>
                           <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
                           <input type="date" value={filters.attachmentExecutionDateTo} onChange={(e) => setFilters({ ...filters, attachmentExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                      </div>
                     </div>
+                  </div>
+                </div>
                   </div>
                 </div>
               )}
@@ -2802,9 +2854,16 @@ export default function Home() {
                               </div>
                             </td>
                             <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
                               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeColor(row.caseStatus)}`}>
                                 {row.caseStatus}
                               </span>
+                                {row.decisionPending && (
+                                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-purple-100 text-purple-800 ring-purple-600/20">
+                                    Decision Pending
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-right">
                               <Link
@@ -2889,11 +2948,25 @@ export default function Home() {
                   onChange={(e) => setNewReasonInput(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
                   placeholder="Enter reason for pendency"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newReasonInput.trim()) {
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter" && newReasonInput.trim() && !reasonForPendencyOptions.includes(newReasonInput.trim())) {
+                      try {
+                        const response = await fetch('/api/reason-for-pendency', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ reason: newReasonInput.trim(), createdBy: 'Admin' }),
+                        });
+                        const data = await response.json();
+                        if (data.success) {
                       setReasonForPendencyOptions([...reasonForPendencyOptions, newReasonInput.trim()]);
                       setNewReasonInput("");
                       setShowAddReasonModal(false);
+                        } else {
+                          alert(data.error || 'Failed to add reason');
+                        }
+                      } catch (error: any) {
+                        alert(error.message || 'An error occurred');
+                      }
                     }
                   }}
                 />
@@ -2909,11 +2982,25 @@ export default function Home() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (newReasonInput.trim() && !reasonForPendencyOptions.includes(newReasonInput.trim())) {
+                      try {
+                        const response = await fetch('/api/reason-for-pendency', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ reason: newReasonInput.trim(), createdBy: 'Admin' }),
+                        });
+                        const data = await response.json();
+                        if (data.success) {
                       setReasonForPendencyOptions([...reasonForPendencyOptions, newReasonInput.trim()]);
                       setNewReasonInput("");
                       setShowAddReasonModal(false);
+                        } else {
+                          alert(data.error || 'Failed to add reason');
+                        }
+                      } catch (error: any) {
+                        alert(error.message || 'An error occurred');
+                      }
                     }
                   }}
                   disabled={!newReasonInput.trim() || reasonForPendencyOptions.includes(newReasonInput.trim())}

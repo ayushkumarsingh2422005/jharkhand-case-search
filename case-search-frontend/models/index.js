@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Case = require('./Case');
 const Note = require('./Note');
 const ReasonForPendency = require('./ReasonForPendency');
+const CrimeHead = require('./CrimeHead');
 
 // Database connection function
 const connectDB = async () => {
@@ -38,5 +39,6 @@ module.exports = {
   Case,
   Note,
   ReasonForPendency,
+  CrimeHead,
 };
 

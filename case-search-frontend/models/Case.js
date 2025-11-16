@@ -351,8 +351,13 @@ const CaseSchema = new mongoose.Schema({
   },
   caseStatus: {
     type: String,
-    enum: ['Disposed', 'Under investigation', 'Decision Pending'],
+    enum: ['Disposed', 'Under investigation'],
     required: true,
+    index: true,
+  },
+  decisionPending: {
+    type: Boolean,
+    default: false,
     index: true,
   },
   investigationStatus: {
@@ -411,6 +416,11 @@ const CaseSchema = new mongoose.Schema({
   },
   finalChargesheetSubmissionDate: {
     type: Date,
+  },
+  chargesheetDeadlineType: {
+    type: String,
+    enum: ['60', '90'],
+    default: '60',
   },
   prosecutionSanction: [ProsecutionSanctionSchema],
   fsl: [FSLSchema],

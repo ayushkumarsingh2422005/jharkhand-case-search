@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { generateCasePDF } from "@/lib/generateCasePDF";
 
 type AccusedStatus = "True" | "False" | "Decision Pending" | "Arrested" | "Not Arrested";
-type CaseStatus = "Disposed" | "Under investigation" | "Decision Pending";
+type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
 type Priority = "Under monitoring" | "Normal";
 type SrNsr = "SR" | "NSR";
@@ -113,6 +113,7 @@ export default function CaseDetail() {
         punishmentCategory: ">7 yrs" as "≤7 yrs" | ">7 yrs",
         totalAccused: 0,
         caseStatus: "Under investigation" as CaseStatus,
+        decisionPending: false,
         investigationStatus: undefined as InvestigationStatus | undefined,
         srNsr: undefined as SrNsr | undefined,
         priority: "Normal" as Priority,
@@ -132,7 +133,8 @@ export default function CaseDetail() {
       section: caseData.crimeSection || caseData.section || "",
       punishmentCategory: (caseData.punishmentCategory || ">7 yrs") as "≤7 yrs" | ">7 yrs",
       totalAccused: caseData.accused?.length || 0,
-      caseStatus: (caseData.caseStatus || "Under investigation") as CaseStatus,
+      caseStatus: ((caseData.caseStatus === "Decision Pending" ? "Under investigation" : caseData.caseStatus) || "Under investigation") as CaseStatus,
+      decisionPending: caseData.decisionPending || (caseData.caseStatus === "Decision Pending"),
       investigationStatus: caseData.investigationStatus as InvestigationStatus | undefined,
       srNsr: (caseData.srNsr as SrNsr | undefined),
       priority: (caseData.priority || "Normal") as Priority,
@@ -368,6 +370,40 @@ export default function CaseDetail() {
     }
   };
 
+  // Calculate chargesheet alert
+  const chargesheetAlert = useMemo(() => {
+    if (!caseData || caseData.finalChargesheetSubmitted) return null;
+    
+    const deadlineType = caseData.chargesheetDeadlineType || "60";
+    const deadlineDays = parseInt(deadlineType);
+    
+    // Find earliest arrest date
+    const arrestDates = (caseData.accused || [])
+      .map((acc: any) => acc.arrestedDate || acc.arrestedOn)
+      .filter((date: any) => date)
+      .map((date: string) => new Date(date).getTime())
+      .filter((timestamp: number) => !isNaN(timestamp));
+    
+    if (arrestDates.length === 0) return null;
+    
+    const earliestArrestDate = new Date(Math.min(...arrestDates));
+    const deadlineDate = new Date(earliestArrestDate);
+    deadlineDate.setDate(deadlineDate.getDate() + deadlineDays);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deadlineDate.setHours(0, 0, 0, 0);
+    
+    const daysRemaining = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return {
+      daysRemaining,
+      deadlineDate: deadlineDate.toISOString().split('T')[0],
+      deadlineType,
+      isOverdue: daysRemaining < 0,
+    };
+  }, [caseData]);
+
   const accused: AccusedInfo[] = useMemo(() => {
     if (!caseData?.accused) return [];
     
@@ -538,6 +574,58 @@ export default function CaseDetail() {
         <span className="font-medium">Case Detail</span>
       </div>
 
+      {/* Chargesheet Alert */}
+      {chargesheetAlert && (
+        <div className={`mb-6 rounded-lg shadow-sm ring-1 overflow-hidden ${
+          chargesheetAlert.isOverdue 
+            ? "bg-red-50 border-red-200 ring-red-300" 
+            : chargesheetAlert.daysRemaining <= 7
+            ? "bg-orange-50 border-orange-200 ring-orange-300"
+            : "bg-blue-50 border-blue-200 ring-blue-300"
+        }`}>
+          <div className="px-4 py-3 md:px-6 md:py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                  chargesheetAlert.isOverdue 
+                    ? "bg-red-100 text-red-700" 
+                    : chargesheetAlert.daysRemaining <= 7
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-blue-100 text-blue-700"
+                }`}>
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className={`font-semibold ${
+                    chargesheetAlert.isOverdue 
+                      ? "text-red-900" 
+                      : chargesheetAlert.daysRemaining <= 7
+                      ? "text-orange-900"
+                      : "text-blue-900"
+                  }`}>
+                    {chargesheetAlert.isOverdue 
+                      ? `Chargesheet Overdue by ${Math.abs(chargesheetAlert.daysRemaining)} days`
+                      : `${chargesheetAlert.daysRemaining} days left to file chargesheet`}
+                  </h3>
+                  <p className={`text-sm mt-0.5 ${
+                    chargesheetAlert.isOverdue 
+                      ? "text-red-700" 
+                      : chargesheetAlert.daysRemaining <= 7
+                      ? "text-orange-700"
+                      : "text-blue-700"
+                  }`}>
+                    Deadline: {new Date(chargesheetAlert.deadlineDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} ({chargesheetAlert.deadlineType} days from earliest arrest)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Case Header */}
       <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -558,14 +646,21 @@ export default function CaseDetail() {
               </svg>
               Print PDF
             </button>
-            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-              summary.caseStatus === "Disposed" ? "bg-green-100 text-green-800 ring-green-600/20" :
-              summary.caseStatus === "Under investigation" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
-              "bg-red-100 text-red-800 ring-red-600/20"
-            }`}>
-              {summary.caseStatus}
-              {summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
+                summary.caseStatus === "Disposed" ? "bg-green-100 text-green-800 ring-green-600/20" :
+                summary.caseStatus === "Under investigation" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
+                "bg-red-100 text-red-800 ring-red-600/20"
+              }`}>
+                {summary.caseStatus}
+                {summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}
+              </span>
+              {summary.decisionPending && (
+                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-purple-100 text-purple-800 ring-purple-600/20">
+                  Decision Pending
+                </span>
+              )}
+            </div>
             {summary.srNsr && (
               <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-indigo-50 text-indigo-700 ring-indigo-600/20">
                 {summary.srNsr}
@@ -622,7 +717,7 @@ export default function CaseDetail() {
                   <li><strong className="font-medium">Crime Head:</strong> {summary.crimeHead}</li>
                   <li><strong className="font-medium">Section:</strong> {summary.section}</li>
                   <li><strong className="font-medium">Punishment:</strong> {summary.punishmentCategory}</li>
-                  <li><strong className="font-medium">Status:</strong> {summary.caseStatus}{summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}</li>
+                  <li><strong className="font-medium">Status:</strong> {summary.caseStatus}{summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}{summary.decisionPending && " - Decision Pending"}</li>
                   {summary.srNsr && <li><strong className="font-medium">SR/NSR:</strong> {summary.srNsr}</li>}
                   <li><strong className="font-medium">Priority:</strong> {summary.priority}</li>
                   <li><strong className="font-medium">Property/Professional Crime:</strong> {summary.isPropertyProfessionalCrime ? "Yes" : "No"}</li>

@@ -91,6 +91,8 @@ export default function Dashboard() {
         <Link href="/" className="text-blue-700 hover:underline">Search</Link>
         <span className="mx-2">/</span>
         <span className="font-medium">Dashboard</span>
+        <span className="mx-2">|</span>
+        <Link href="/admin" className="text-purple-700 hover:underline">Admin Panel</Link>
       </div>
 
       {/* Header */}
