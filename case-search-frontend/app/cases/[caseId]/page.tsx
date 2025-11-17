@@ -1,8 +1,9 @@
 "use client";
-import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { DecisionPendingStatus, deriveDecisionPendingStatus } from "@/lib/decisionPending";
 import { generateCasePDF } from "@/lib/generateCasePDF";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "../../../components/AuthGuard";
 import { useAuth } from "../../../contexts/AuthContext";
 
@@ -116,7 +117,7 @@ export default function CaseDetail() {
         punishmentCategory: ">7 yrs" as "≤7 yrs" | ">7 yrs",
         totalAccused: 0,
         caseStatus: "Under investigation" as CaseStatus,
-        decisionPending: false,
+        decisionPendingStatus: "Completed" as DecisionPendingStatus,
         investigationStatus: undefined as InvestigationStatus | undefined,
         srNsr: undefined as SrNsr | undefined,
         priority: "Normal" as Priority,
@@ -137,7 +138,7 @@ export default function CaseDetail() {
       punishmentCategory: (caseData.punishmentCategory || ">7 yrs") as "≤7 yrs" | ">7 yrs",
       totalAccused: caseData.accused?.length || 0,
       caseStatus: ((caseData.caseStatus === "Decision Pending" ? "Under investigation" : caseData.caseStatus) || "Under investigation") as CaseStatus,
-      decisionPending: caseData.decisionPending || (caseData.caseStatus === "Decision Pending"),
+      decisionPendingStatus: deriveDecisionPendingStatus(caseData.accused || [], caseData.decisionPending),
       investigationStatus: caseData.investigationStatus as InvestigationStatus | undefined,
       srNsr: (caseData.srNsr as SrNsr | undefined),
       priority: (caseData.priority || "Normal") as Priority,
@@ -151,6 +152,19 @@ export default function CaseDetail() {
   const [activeTab, setActiveTab] = useState<
     "overview" | "accused" | "notices" | "prosecution" | "victim" | "reports" | "petition" | "notes"
   >("overview");
+
+  const decisionStatusBadgeClass = (status: DecisionPendingStatus) => {
+    switch (status) {
+      case "Decision pending":
+        return "bg-purple-100 text-purple-800 ring-purple-600/20";
+      case "Partial":
+        return "bg-amber-100 text-amber-800 ring-amber-600/20";
+      case "Completed":
+        return "bg-emerald-100 text-emerald-800 ring-emerald-600/20";
+      default:
+        return "bg-slate-100 text-slate-800 ring-slate-600/20";
+    }
+  };
 
   // Notes state (read-only)
   type Note = {
@@ -594,7 +608,7 @@ export default function CaseDetail() {
           <div className="px-4 py-3 md:px-6 md:py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
                   chargesheetAlert.isOverdue 
                     ? "bg-red-100 text-red-700" 
                     : chargesheetAlert.daysRemaining <= 7
@@ -663,11 +677,9 @@ export default function CaseDetail() {
                 {summary.caseStatus}
                 {summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}
               </span>
-              {summary.decisionPending && (
-                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-purple-100 text-purple-800 ring-purple-600/20">
-                  Decision Pending
-                </span>
-              )}
+              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${decisionStatusBadgeClass(summary.decisionPendingStatus)}`}>
+                {summary.decisionPendingStatus}
+              </span>
             </div>
             {summary.srNsr && (
               <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-indigo-50 text-indigo-700 ring-indigo-600/20">
@@ -725,7 +737,8 @@ export default function CaseDetail() {
                   <li><strong className="font-medium">Crime Head:</strong> {summary.crimeHead}</li>
                   <li><strong className="font-medium">Section:</strong> {summary.section}</li>
                   <li><strong className="font-medium">Punishment:</strong> {summary.punishmentCategory}</li>
-                  <li><strong className="font-medium">Status:</strong> {summary.caseStatus}{summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}{summary.decisionPending && " - Decision Pending"}</li>
+                  <li><strong className="font-medium">Status:</strong> {summary.caseStatus}{summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}</li>
+                  <li><strong className="font-medium">Decision Status:</strong> {summary.decisionPendingStatus}</li>
                   {summary.srNsr && <li><strong className="font-medium">SR/NSR:</strong> {summary.srNsr}</li>}
                   <li><strong className="font-medium">Priority:</strong> {summary.priority}</li>
                   <li><strong className="font-medium">Property/Professional Crime:</strong> {summary.isPropertyProfessionalCrime ? "Yes" : "No"}</li>

@@ -286,7 +286,6 @@ export default function EditCase() {
     punishmentCategory: "≤7 yrs" as "≤7 yrs" | ">7 yrs",
     caseDate: "",
     caseStatus: "Under investigation" as CaseStatus,
-    decisionPending: false,
     investigationStatus: "" as InvestigationStatus | "",
     srNsr: "" as SrNsr | "",
     priority: "Normal" as Priority,
@@ -519,7 +518,6 @@ export default function EditCase() {
           punishmentCategory: fetchedCaseData.punishmentCategory || "≤7 yrs",
           caseDate: fetchedCaseData.caseDate ? new Date(fetchedCaseData.caseDate).toISOString().split('T')[0] : "",
           caseStatus: (fetchedCaseData.caseStatus === "Decision Pending" ? "Under investigation" : fetchedCaseData.caseStatus) || "Under investigation",
-          decisionPending: fetchedCaseData.decisionPending || (fetchedCaseData.caseStatus === "Decision Pending"),
           investigationStatus: fetchedCaseData.investigationStatus || "",
           srNsr: fetchedCaseData.srNsr || "",
           priority: fetchedCaseData.priority || "Normal",
@@ -1392,18 +1390,6 @@ export default function EditCase() {
                   <option value="Under investigation">Under investigation</option>
                   <option value="Disposed">Disposed</option>
                 </select>
-              </div>
-              <div>
-                <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="decisionPending"
-                    checked={formData.decisionPending}
-                    onChange={(e) => setFormData(prev => ({ ...prev, decisionPending: e.target.checked }))}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Decision Pending
-                </label>
               </div>
               {formData.caseStatus === "Under investigation" && (
                 <div>

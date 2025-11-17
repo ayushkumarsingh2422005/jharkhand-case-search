@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .lean();
+      .lean({ virtuals: true });
 
     const total = await Case.countDocuments(filter);
 

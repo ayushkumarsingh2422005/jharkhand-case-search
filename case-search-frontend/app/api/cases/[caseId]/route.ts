@@ -37,11 +37,11 @@ export async function GET(
     // Check if it's a valid ObjectId or case number
     let caseData;
     if (mongoose.Types.ObjectId.isValid(caseId)) {
-      caseData = await Case.findById(caseId).lean();
+      caseData = await Case.findById(caseId).lean({ virtuals: true });
     } else {
       // Try to find by case number (replace - with /)
       const caseNo = caseId.replace(/-/g, '/');
-      caseData = await Case.findOne({ caseNo }).lean();
+      caseData = await Case.findOne({ caseNo }).lean({ virtuals: true });
     }
 
     if (!caseData) {

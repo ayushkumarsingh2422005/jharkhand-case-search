@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthGuard } from "../components/AuthGuard";
 import { useAuth } from "../contexts/AuthContext";
+import { deriveDecisionPendingStatus, DecisionPendingStatus } from "@/lib/decisionPending";
 
 type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
@@ -88,7 +89,7 @@ type CaseRow = {
   punishmentCategory: "\u22647 yrs" | ">7 yrs";
   accused: Accused[];
   caseStatus: CaseStatus;
-  decisionPending?: boolean;
+  decisionPendingStatus: DecisionPendingStatus;
   investigationStatus?: InvestigationStatus;
   priority?: Priority;
   isPropertyProfessionalCrime?: boolean;
@@ -105,6 +106,12 @@ const POLICE_STATIONS = [
   "South Sector PS",
   "Harbour PS",
   "Airport PS",
+];
+
+const DECISION_PENDING_OPTIONS: DecisionPendingStatus[] = [
+  "Decision pending",
+  "Partial",
+  "Completed",
 ];
 
 const INDIAN_STATES = [
@@ -370,7 +377,7 @@ export default function Home() {
     section: "",
     punishment: [] as Array<"\u22647" | ">7">,
     caseStatus: [] as Array<CaseStatus>,
-    decisionPending: false,
+    decisionPendingStatus: "" as "" | DecisionPendingStatus,
     investigationStatus: [] as Array<InvestigationStatus>,
     priority: [] as Array<Priority>,
     isPropertyProfessionalCrime: false,
@@ -518,15 +525,20 @@ export default function Home() {
       if (result.success) {
         // Transform API data to match CaseRow type
         const transformedData: CaseRow[] = result.data.map((item: any) => {
-          // Handle legacy data: if caseStatus is "Decision Pending", convert to decisionPending boolean
+          // Handle legacy data: if caseStatus is "Decision Pending", convert to decisionPending status
           let caseStatus: CaseStatus = item.caseStatus as CaseStatus;
-          let decisionPending = item.decisionPending || false;
-          
+          const legacyDecisionPending =
+            item.decisionPending === true || item.caseStatus === "Decision Pending";
+
           if (item.caseStatus === "Decision Pending") {
             caseStatus = "Under investigation"; // Default to "Under investigation" for legacy data
-            decisionPending = true;
           }
-          
+
+          const decisionPendingStatus = deriveDecisionPendingStatus(
+            item.accused || [],
+            legacyDecisionPending
+          );
+
           return {
           caseNo: item.caseNo,
           year: item.year,
@@ -536,7 +548,7 @@ export default function Home() {
           punishmentCategory: item.punishmentCategory as "≤7 yrs" | ">7 yrs",
           accused: item.accused || [],
             caseStatus: caseStatus,
-            decisionPending: decisionPending,
+            decisionPendingStatus,
           investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
           priority: item.priority as Priority | undefined,
           isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
@@ -556,7 +568,8 @@ export default function Home() {
   };
 
   // Original hardcoded data (kept as fallback/initial state)
-  const [initialData] = useState<CaseRow[]>([
+  const [initialData] = useState<CaseRow[]>(() => {
+    const seed: Array<Omit<CaseRow, "decisionPendingStatus"> & { decisionPending?: boolean }> = [
     {
       caseNo: "12/2023",
       year: 2023,
@@ -618,7 +631,6 @@ export default function Home() {
       crimeSection: "376 IPC",
       punishmentCategory: ">7 yrs",
       caseStatus: "Under investigation",
-      decisionPending: true,
       priority: "Under monitoring",
       accused: [
         { name: "Vikram Singh", status: "Decision pending" },
@@ -1065,7 +1077,12 @@ export default function Home() {
       finalChargesheetSubmitted: true,
       finalChargesheetSubmissionDate: "2024-01-20",
     },
-  ]);
+    ];
+    return seed.map(({ decisionPending, ...rest }) => ({
+      ...rest,
+      decisionPendingStatus: deriveDecisionPendingStatus(rest.accused || [], decisionPending),
+    }));
+  });
 
   const filtered = useMemo(() => {
     return data
@@ -1313,8 +1330,8 @@ export default function Home() {
         // Case status filter
         if (filters.caseStatus.length > 0 && !filters.caseStatus.includes(row.caseStatus)) return null;
         
-        // Decision Pending filter (separate checkbox)
-        if (filters.decisionPending && !row.decisionPending) return null;
+        // Decision Pending filter (derived from accused statuses)
+        if (filters.decisionPendingStatus && row.decisionPendingStatus !== filters.decisionPendingStatus) return null;
         
         // Investigation status filter (only for "Under investigation" cases)
         if (filters.investigationStatus.length > 0) {
@@ -1572,7 +1589,7 @@ export default function Home() {
       section: "",
       punishment: [],
       caseStatus: [],
-      decisionPending: false,
+      decisionPendingStatus: "",
       investigationStatus: [],
       priority: [],
       isPropertyProfessionalCrime: false,
@@ -1685,6 +1702,19 @@ export default function Home() {
         return "bg-orange-100 text-orange-800 ring-orange-600/20";
       default:
         return "bg-red-100 text-red-800 ring-red-600/20";
+    }
+  }
+
+  function decisionPendingBadgeColor(status: DecisionPendingStatus) {
+    switch (status) {
+      case "Decision pending":
+        return "bg-purple-100 text-purple-800 ring-purple-600/20";
+      case "Partial":
+        return "bg-amber-100 text-amber-800 ring-amber-600/20";
+      case "Completed":
+        return "bg-emerald-100 text-emerald-800 ring-emerald-600/20";
+      default:
+        return "bg-slate-100 text-slate-800 ring-slate-600/20";
     }
   }
 
@@ -1965,16 +1995,24 @@ export default function Home() {
                         {status}
                       </label>
                     ))}
-                    <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.decisionPending}
-                        onChange={(e) => setFilters({ ...filters, decisionPending: e.target.checked })}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      Decision Pending
-                    </label>
                   </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Status</label>
+                  <select
+                    value={filters.decisionPendingStatus}
+                    onChange={(e) =>
+                      setFilters({ ...filters, decisionPendingStatus: e.target.value as "" | DecisionPendingStatus })
+                    }
+                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="">All statuses</option>
+                    {DECISION_PENDING_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 {filters.caseStatus.includes("Under investigation") && (
                   <div>
@@ -2882,11 +2920,11 @@ export default function Home() {
                               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeColor(row.caseStatus)}`}>
                                 {row.caseStatus}
                               </span>
-                                {row.decisionPending && (
-                                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-purple-100 text-purple-800 ring-purple-600/20">
-                                    Decision Pending
-                                  </span>
-                                )}
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${decisionPendingBadgeColor(row.decisionPendingStatus)}`}
+                                >
+                                  {row.decisionPendingStatus}
+                                </span>
                               </div>
                             </td>
                             <td className="px-4 py-3 text-right">

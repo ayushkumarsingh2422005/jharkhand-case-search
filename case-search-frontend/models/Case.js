@@ -355,11 +355,6 @@ const CaseSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-  decisionPending: {
-    type: Boolean,
-    default: false,
-    index: true,
-  },
   investigationStatus: {
     type: String,
     enum: ['Detected', 'Undetected'],
@@ -446,6 +441,29 @@ CaseSchema.index({ caseStatus: 1, investigationStatus: 1 });
 CaseSchema.index({ 'accused.name': 1 });
 CaseSchema.index({ 'accused.status': 1 });
 CaseSchema.index({ createdAt: -1 });
+
+function computeDecisionPendingStatus(accused = [], legacyDecisionPending = false) {
+  if (!accused || accused.length === 0) {
+    return legacyDecisionPending ? 'Decision pending' : 'Completed';
+  }
+
+  const normalized = accused.map(accusedItem => {
+    return (accusedItem.status || '').toString().trim().toLowerCase();
+  });
+
+  const hasPending = normalized.some(status => status === 'decision pending');
+  if (!hasPending) {
+    return 'Completed';
+  }
+
+  const allPending = normalized.every(status => status === 'decision pending');
+  return allPending ? 'Decision pending' : 'Partial';
+}
+
+CaseSchema.virtual('decisionPendingStatus').get(function() {
+  const legacyDecisionPending = this.get('decisionPending');
+  return computeDecisionPendingStatus(this.accused || [], legacyDecisionPending);
+});
 
 // Virtual for total accused count
 CaseSchema.virtual('totalAccused').get(function() {

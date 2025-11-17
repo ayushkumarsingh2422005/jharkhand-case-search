@@ -293,7 +293,6 @@ export default function AddCase() {
     punishmentCategory: "≤7 yrs" as "≤7 yrs" | ">7 yrs",
     caseDate: "",
     caseStatus: "Under investigation" as CaseStatus,
-    decisionPending: false,
     investigationStatus: "" as InvestigationStatus | "",
     srNsr: "" as SrNsr | "",
     priority: "Normal" as Priority,
@@ -1121,19 +1120,6 @@ export default function AddCase() {
                   <option value="Under investigation">Under investigation</option>
                   <option value="Disposed">Disposed</option>
                 </select>
-              </div>
-              <div>
-                <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Pending</label>
-                  <input
-                    type="checkbox"
-                    name="decisionPending"
-                    checked={formData.decisionPending}
-                    onChange={(e) => setFormData(prev => ({ ...prev, decisionPending: e.target.checked }))}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Decision Pending
-                </label>
               </div>
               {formData.caseStatus === "Under investigation" && (
                 <div>
