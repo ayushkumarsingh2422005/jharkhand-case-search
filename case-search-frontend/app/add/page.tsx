@@ -11,12 +11,28 @@ type Priority = "Under monitoring" | "Normal";
 type AccusedStatus = "Arrested" | "Not arrested" | "Decision pending";
 
 const POLICE_STATIONS = [
-  "Central PS",
-  "North Zone PS",
-  "East Division PS",
-  "South Sector PS",
-  "Harbour PS",
-  "Airport PS",
+  "Town",
+  "Jasidih",
+  "Devipur",
+  "Kunda",
+  "Rikhiya",
+  "Mohanpur",
+  "Sarwan",
+  "Sonaraithari",
+  "Mahila Deoghar",
+  "ST/SC",
+  "Budhai",
+  "Madhupur",
+  "Pathrol",
+  "Margomunda",
+  "Karoun",
+  "Chitra",
+  "Khaga",
+  "Palajori",
+  "Sarath",
+  "Mahila Madhupur",
+  "Cyber",
+  "Pathradda OP",
 ];
 
 const INJURY_TYPES = [

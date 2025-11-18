@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AuthGuard } from "../components/AuthGuard";
 import { useAuth } from "../contexts/AuthContext";
 import { deriveDecisionPendingStatus, DecisionPendingStatus } from "@/lib/decisionPending";
+import Image from "next/image";
 
 type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
@@ -100,12 +101,28 @@ type CaseRow = {
 };
 
 const POLICE_STATIONS = [
-  "Central PS",
-  "North Zone PS",
-  "East Division PS",
-  "South Sector PS",
-  "Harbour PS",
-  "Airport PS",
+  "Town",
+  "Jasidih",
+  "Devipur",
+  "Kunda",
+  "Rikhiya",
+  "Mohanpur",
+  "Sarwan",
+  "Sonaraithari",
+  "Mahila Deoghar",
+  "ST/SC",
+  "Budhai",
+  "Madhupur",
+  "Pathrol",
+  "Margomunda",
+  "Karoun",
+  "Chitra",
+  "Khaga",
+  "Palajori",
+  "Sarath",
+  "Mahila Madhupur",
+  "Cyber",
+  "Pathradda OP",
 ];
 
 const DECISION_PENDING_OPTIONS: DecisionPendingStatus[] = [
@@ -1786,10 +1803,10 @@ export default function Home() {
         <div className="bg-blue-900 text-white">
           <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-md bg-white/10 grid place-content-center">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg>
+              <div className="h-9 w-9 grid place-content-center">
+                {/* <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg> */}
+                <Image src="/logo.png" alt="Jharkhand" width={36} height={36} />
               </div>
-              <h1 className="text-base md:text-lg font-semibold tracking-wide">CASE MANAGEMENT SYSTEM</h1>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right">
