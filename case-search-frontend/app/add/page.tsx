@@ -312,6 +312,7 @@ export default function AddCase() {
     investigationStatus: "" as InvestigationStatus | "",
     srNsr: "" as SrNsr | "",
     priority: "Normal" as Priority,
+    caseDecisionStatus: "" as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency",
     isPropertyProfessionalCrime: false,
     petition: false,
     publicPetitionFile: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
@@ -1163,6 +1164,21 @@ export default function AddCase() {
                   <option value="">Select</option>
                   <option value="SR">SR</option>
                   <option value="NSR">NSR</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Decision Status</label>
+                <select
+                  name="caseDecisionStatus"
+                  value={formData.caseDecisionStatus}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                >
+                  <option value="">Select status</option>
+                  <option value="True">True</option>
+                  <option value="False">False</option>
+                  <option value="Partial Pendency">Partial Pendency</option>
+                  <option value="Complete Pendency">Complete Pendency</option>
                 </select>
               </div>
               <div>

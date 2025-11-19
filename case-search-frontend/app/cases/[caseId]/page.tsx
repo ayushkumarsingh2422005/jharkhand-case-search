@@ -118,6 +118,7 @@ export default function CaseDetail() {
         totalAccused: 0,
         caseStatus: "Under investigation" as CaseStatus,
         decisionPendingStatus: "Completed" as DecisionPendingStatus,
+        caseDecisionStatus: undefined as string | undefined,
         investigationStatus: undefined as InvestigationStatus | undefined,
         srNsr: undefined as SrNsr | undefined,
         priority: "Normal" as Priority,
@@ -139,6 +140,7 @@ export default function CaseDetail() {
       totalAccused: caseData.accused?.length || 0,
       caseStatus: ((caseData.caseStatus === "Decision Pending" ? "Under investigation" : caseData.caseStatus) || "Under investigation") as CaseStatus,
       decisionPendingStatus: deriveDecisionPendingStatus(caseData.accused || [], caseData.decisionPending),
+      caseDecisionStatus: caseData.caseDecisionStatus as string | undefined,
       investigationStatus: caseData.investigationStatus as InvestigationStatus | undefined,
       srNsr: (caseData.srNsr as SrNsr | undefined),
       priority: (caseData.priority || "Normal") as Priority,
@@ -582,14 +584,14 @@ export default function CaseDetail() {
 
   return (
     <AuthGuard>
-      <div className="mx-auto max-w-7xl p-4 md:p-6">
+    <div className="mx-auto max-w-7xl p-4 md:p-6">
       {/* Breadcrumbs */}
       <div className="mb-4 text-sm text-slate-600">
         <Link href="/" className="text-blue-700 hover:underline">Search</Link>
         {user?.role === "SuperAdmin" && (
           <>
-            <span className="mx-2">/</span>
-            <Link href="/dashboard" className="text-blue-700 hover:underline">Dashboard</Link>
+        <span className="mx-2">/</span>
+        <Link href="/dashboard" className="text-blue-700 hover:underline">Dashboard</Link>
           </>
         )}
         <span className="mx-2">/</span>
@@ -669,17 +671,28 @@ export default function CaseDetail() {
               Print PDF
             </button>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-                summary.caseStatus === "Disposed" ? "bg-green-100 text-green-800 ring-green-600/20" :
-                summary.caseStatus === "Under investigation" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
-                "bg-red-100 text-red-800 ring-red-600/20"
-              }`}>
-                {summary.caseStatus}
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
+              summary.caseStatus === "Disposed" ? "bg-green-100 text-green-800 ring-green-600/20" :
+              summary.caseStatus === "Under investigation" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
+              "bg-red-100 text-red-800 ring-red-600/20"
+            }`}>
+              {summary.caseStatus}
                 {summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}
-              </span>
+            </span>
               <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${decisionStatusBadgeClass(summary.decisionPendingStatus)}`}>
                 {summary.decisionPendingStatus}
               </span>
+              {summary.caseDecisionStatus && (
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
+                  summary.caseDecisionStatus === "True" ? "bg-green-100 text-green-800 ring-green-600/20" :
+                  summary.caseDecisionStatus === "False" ? "bg-red-100 text-red-800 ring-red-600/20" :
+                  summary.caseDecisionStatus === "Partial Pendency" ? "bg-yellow-100 text-yellow-800 ring-yellow-600/20" :
+                  summary.caseDecisionStatus === "Complete Pendency" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
+                  "bg-slate-100 text-slate-800 ring-slate-600/20"
+                }`}>
+                  Case: {summary.caseDecisionStatus}
+                </span>
+              )}
             </div>
             {summary.srNsr && (
               <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-indigo-50 text-indigo-700 ring-indigo-600/20">
@@ -738,7 +751,8 @@ export default function CaseDetail() {
                   <li><strong className="font-medium">Section:</strong> {summary.section}</li>
                   <li><strong className="font-medium">Punishment:</strong> {summary.punishmentCategory}</li>
                   <li><strong className="font-medium">Status:</strong> {summary.caseStatus}{summary.caseStatus === "Under investigation" && summary.investigationStatus && ` (${summary.investigationStatus})`}</li>
-                  <li><strong className="font-medium">Decision Status:</strong> {summary.decisionPendingStatus}</li>
+                  <li><strong className="font-medium">Decision Status (Accused):</strong> {summary.decisionPendingStatus}</li>
+                  {summary.caseDecisionStatus && <li><strong className="font-medium">Case Decision Status:</strong> {summary.caseDecisionStatus}</li>}
                   {summary.srNsr && <li><strong className="font-medium">SR/NSR:</strong> {summary.srNsr}</li>}
                   <li><strong className="font-medium">Priority:</strong> {summary.priority}</li>
                   <li><strong className="font-medium">Property/Professional Crime:</strong> {summary.isPropertyProfessionalCrime ? "Yes" : "No"}</li>
@@ -1293,7 +1307,7 @@ export default function CaseDetail() {
           )}
         </div>
       </div>
-      </div>
+    </div>
     </AuthGuard>
   );
 }

@@ -121,6 +121,9 @@ export async function POST(request: NextRequest) {
     if (body.priority === '') {
       delete body.priority;
     }
+    if (body.caseDecisionStatus === '') {
+      delete body.caseDecisionStatus;
+    }
 
     // Check if case already exists
     const existingCase = await Case.findOne({ caseNo: body.caseNo });

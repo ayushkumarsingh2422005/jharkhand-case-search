@@ -101,6 +101,9 @@ export async function PUT(
     if (body.priority === '') {
       delete body.priority;
     }
+    if (body.caseDecisionStatus === '') {
+      delete body.caseDecisionStatus;
+    }
 
     let caseData;
     if (mongoose.Types.ObjectId.isValid(caseId)) {

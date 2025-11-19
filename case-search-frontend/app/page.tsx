@@ -91,6 +91,7 @@ type CaseRow = {
   accused: Accused[];
   caseStatus: CaseStatus;
   decisionPendingStatus: DecisionPendingStatus;
+  caseDecisionStatus?: string;
   investigationStatus?: InvestigationStatus;
   priority?: Priority;
   isPropertyProfessionalCrime?: boolean;
@@ -395,6 +396,7 @@ export default function Home() {
     punishment: [] as Array<"\u22647" | ">7">,
     caseStatus: [] as Array<CaseStatus>,
     decisionPendingStatus: "" as "" | DecisionPendingStatus,
+    caseDecisionStatus: "" as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency",
     investigationStatus: [] as Array<InvestigationStatus>,
     priority: [] as Array<Priority>,
     isPropertyProfessionalCrime: false,
@@ -566,6 +568,7 @@ export default function Home() {
           accused: item.accused || [],
             caseStatus: caseStatus,
             decisionPendingStatus,
+            caseDecisionStatus: item.caseDecisionStatus as string | undefined,
           investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
           priority: item.priority as Priority | undefined,
           isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
@@ -1350,6 +1353,9 @@ export default function Home() {
         // Decision Pending filter (derived from accused statuses)
         if (filters.decisionPendingStatus && row.decisionPendingStatus !== filters.decisionPendingStatus) return null;
         
+        // Case Decision Status filter
+        if (filters.caseDecisionStatus && row.caseDecisionStatus !== filters.caseDecisionStatus) return null;
+        
         // Investigation status filter (only for "Under investigation" cases)
         if (filters.investigationStatus.length > 0) {
           if (row.caseStatus !== "Under investigation") return null;
@@ -1607,6 +1613,7 @@ export default function Home() {
       punishment: [],
       caseStatus: [],
       decisionPendingStatus: "",
+      caseDecisionStatus: "",
       investigationStatus: [],
       priority: [],
       isPropertyProfessionalCrime: false,
@@ -1737,7 +1744,7 @@ export default function Home() {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen">
+    <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-blue-900/30">
         <div className="bg-white border-b border-slate-200 px-4 py-3">
@@ -1746,18 +1753,18 @@ export default function Home() {
             <div className="flex items-center gap-4">
               {user?.role === "SuperAdmin" && (
                 <>
-                  <Link
-                    href="/dashboard"
-                    className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7" />
-                      <rect x="14" y="3" width="7" height="7" />
-                      <rect x="14" y="14" width="7" height="7" />
-                      <rect x="3" y="14" width="7" height="7" />
-                    </svg>
-                    Dashboard
-                  </Link>
+              <Link
+                href="/dashboard"
+                className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+                Dashboard
+              </Link>
                   <Link
                     href="/admin"
                     className="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center gap-1"
@@ -1786,16 +1793,16 @@ export default function Home() {
                 Logout
               </button>
               {user?.role === "SuperAdmin" && (
-                <Link
-                  href="/add"
-                  className="text-sm text-white bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add Case
-                </Link>
+              <Link
+                href="/add"
+                className="text-sm text-white bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Case
+              </Link>
               )}
             </div>
           </div>
@@ -2015,7 +2022,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Status</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Status (Accused)</label>
                   <select
                     value={filters.decisionPendingStatus}
                     onChange={(e) =>
@@ -2029,6 +2036,22 @@ export default function Home() {
                         {option}
                       </option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Decision Status</label>
+                  <select
+                    value={filters.caseDecisionStatus}
+                    onChange={(e) =>
+                      setFilters({ ...filters, caseDecisionStatus: e.target.value as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency" })
+                    }
+                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="">All statuses</option>
+                    <option value="True">True</option>
+                    <option value="False">False</option>
+                    <option value="Partial Pendency">Partial Pendency</option>
+                    <option value="Complete Pendency">Complete Pendency</option>
                   </select>
                 </div>
                 {filters.caseStatus.includes("Under investigation") && (
@@ -2905,6 +2928,7 @@ export default function Home() {
                       <th className="px-4 py-3 text-left font-medium">Punishment</th>
                       <th className="px-4 py-3 text-left font-medium">Accused</th>
                       <th className="px-4 py-3 text-left font-medium">Case Status</th>
+                      <th className="px-4 py-3 text-left font-medium">Case Decision Status</th>
                       <th className="px-4 py-3 text-right font-medium">Action</th>
                     </tr>
                   </thead>
@@ -2943,6 +2967,21 @@ export default function Home() {
                                   {row.decisionPendingStatus}
                                 </span>
                               </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              {row.caseDecisionStatus ? (
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
+                                  row.caseDecisionStatus === "True" ? "bg-green-100 text-green-800 ring-green-600/20" :
+                                  row.caseDecisionStatus === "False" ? "bg-red-100 text-red-800 ring-red-600/20" :
+                                  row.caseDecisionStatus === "Partial Pendency" ? "bg-yellow-100 text-yellow-800 ring-yellow-600/20" :
+                                  row.caseDecisionStatus === "Complete Pendency" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
+                                  "bg-slate-100 text-slate-800 ring-slate-600/20"
+                                }`}>
+                                  {row.caseDecisionStatus}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-xs">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <Link
@@ -3092,7 +3131,7 @@ export default function Home() {
           </div>
         </div>
       )}
-      </div>
+    </div>
     </AuthGuard>
   );
 }

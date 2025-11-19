@@ -305,6 +305,7 @@ export default function EditCase() {
     investigationStatus: "" as InvestigationStatus | "",
     srNsr: "" as SrNsr | "",
     priority: "Normal" as Priority,
+    caseDecisionStatus: "" as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency",
     isPropertyProfessionalCrime: false,
     petition: false,
     publicPetitionFile: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
@@ -537,6 +538,7 @@ export default function EditCase() {
           investigationStatus: fetchedCaseData.investigationStatus || "",
           srNsr: fetchedCaseData.srNsr || "",
           priority: fetchedCaseData.priority || "Normal",
+          caseDecisionStatus: fetchedCaseData.caseDecisionStatus || "",
           isPropertyProfessionalCrime: fetchedCaseData.isPropertyProfessionalCrime || false,
           petition: fetchedCaseData.petition || false,
           reasonForPendency: fetchedCaseData.reasonForPendency || [],
@@ -1256,7 +1258,7 @@ export default function EditCase() {
 
   return (
     <SuperAdminGuard>
-      <div className="mx-auto max-w-7xl p-4 md:p-6">
+    <div className="mx-auto max-w-7xl p-4 md:p-6">
       {/* Breadcrumbs */}
       <div className="mb-4 text-sm text-slate-600">
         <Link href="/" className="text-blue-700 hover:underline">Search</Link>
@@ -1433,6 +1435,21 @@ export default function EditCase() {
                   <option value="">Select</option>
                   <option value="SR">SR</option>
                   <option value="NSR">NSR</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Decision Status</label>
+                <select
+                  name="caseDecisionStatus"
+                  value={formData.caseDecisionStatus}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                >
+                  <option value="">Select status</option>
+                  <option value="True">True</option>
+                  <option value="False">False</option>
+                  <option value="Partial Pendency">Partial Pendency</option>
+                  <option value="Complete Pendency">Complete Pendency</option>
                 </select>
               </div>
               <div>
@@ -2008,12 +2025,12 @@ export default function EditCase() {
                           </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Label</label>
                             <select
                               value={report.label}
                               onChange={(e) => updateSPReport(index, "label", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             >
                               <option value="">Select Report</option>
                               <option value="R1">R1</option>
@@ -2022,16 +2039,16 @@ export default function EditCase() {
                               <option value="R4">R4</option>
                               <option value="R5">R5</option>
                             </select>
-                          </div>
-                          <div>
+                </div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
-                            <input
-                              type="date"
+                  <input
+                    type="date"
                               value={report.date}
                               onChange={(e) => updateSPReport(index, "date", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                          </div>
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
                         </div>
                         {/* File Upload for SP Report */}
                         <div className="border-t border-slate-200 pt-3 mt-3">
@@ -2066,7 +2083,7 @@ export default function EditCase() {
                               </button>
                             </div>
                           ) : (
-                            <input
+                  <input
                               type="file"
                               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
                               onChange={(e) => {
@@ -2074,9 +2091,9 @@ export default function EditCase() {
                                 if (file) uploadSPReportFile(file, index, e.target);
                               }}
                               className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            />
+                  />
                           )}
-                        </div>
+                </div>
                       </div>
                     ))}
                   </div>
@@ -2131,12 +2148,12 @@ export default function EditCase() {
                           </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Label</label>
                             <select
                               value={report.label}
                               onChange={(e) => updateDSPReport(index, "label", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             >
                               <option value="">Select Report</option>
                               <option value="PR1">PR1</option>
@@ -2145,16 +2162,16 @@ export default function EditCase() {
                               <option value="PR4">PR4</option>
                               <option value="PR5">PR5</option>
                             </select>
-                          </div>
-                          <div>
+                </div>
+                <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Report Date</label>
-                            <input
-                              type="date"
+                  <input
+                    type="date"
                               value={report.date}
                               onChange={(e) => updateDSPReport(index, "date", e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                          </div>
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
                         </div>
                         {/* File Upload for DSP Report */}
                         <div className="border-t border-slate-200 pt-3 mt-3">
@@ -2189,7 +2206,7 @@ export default function EditCase() {
                               </button>
                             </div>
                           ) : (
-                            <input
+                  <input
                               type="file"
                               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
                               onChange={(e) => {
@@ -2197,9 +2214,9 @@ export default function EditCase() {
                                 if (file) uploadDSPReportFile(file, index, e.target);
                               }}
                               className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            />
+                  />
                           )}
-                        </div>
+                </div>
                       </div>
                     ))}
                   </div>
@@ -2627,7 +2644,7 @@ export default function EditCase() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <span className="text-sm text-slate-700">{fslEntry.file.original_filename}</span>
-                              </div>
+                      </div>
                               <button
                                 type="button"
                                 onClick={async () => {
@@ -2735,7 +2752,7 @@ export default function EditCase() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span className="text-sm text-slate-700">{formData.injuryReport.file.original_filename}</span>
-                      </div>
+              </div>
                       <button
                         type="button"
                         onClick={async () => {
@@ -2833,7 +2850,7 @@ export default function EditCase() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span className="text-sm text-slate-700">{formData.pmReport.file.original_filename}</span>
-                      </div>
+              </div>
                       <button
                         type="button"
                         onClick={async () => {
@@ -3042,7 +3059,7 @@ export default function EditCase() {
           </div>
         </div>
       </form>
-      </div>
+    </div>
     </SuperAdminGuard>
   );
 }

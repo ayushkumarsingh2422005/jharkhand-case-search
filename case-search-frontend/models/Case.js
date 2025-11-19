@@ -417,6 +417,11 @@ const CaseSchema = new mongoose.Schema({
     enum: ['60', '90'],
     default: '60',
   },
+  caseDecisionStatus: {
+    type: String,
+    enum: ['True', 'False', 'Partial Pendency', 'Complete Pendency'],
+    index: true,
+  },
   prosecutionSanction: [ProsecutionSanctionSchema],
   fsl: [FSLSchema],
   // Victim information
