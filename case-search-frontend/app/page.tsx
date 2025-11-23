@@ -52,11 +52,9 @@ type Accused = {
 };
 
 
-type SPReportPair = {
-  rLabel?: string;
-  rDate?: string;
-  prLabel?: string;
-  prDate?: string;
+type ReportItem = {
+  label?: string;
+  date?: string;
   file?: {
     public_id?: string;
     secure_url?: string;
@@ -78,7 +76,8 @@ type ReportInfo = {
   fpr?: string;
   finalOrder?: string;
   finalChargesheet?: string;
-  spReports?: SPReportPair[];
+  spReports?: ReportItem[];
+  dspReports?: ReportItem[];
 };
 
 type CaseRow = {
@@ -173,7 +172,7 @@ const INDIAN_STATES = [
 
 const DISTRICTS_BY_STATE: Record<string, string[]> = {
   "Andhra Pradesh": [
-    "Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", 
+    "Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool",
     "Prakasam", "Nellore", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"
   ],
   "Arunachal Pradesh": [
@@ -367,14 +366,14 @@ export default function Home() {
   const [reasonForPendencyOptions, setReasonForPendencyOptions] = useState<string[]>([]);
   const [newReasonInput, setNewReasonInput] = useState("");
   const [showAddReasonModal, setShowAddReasonModal] = useState(false);
-  
+
   // Collapsible filter sections state
   const [expandedSections, setExpandedSections] = useState({
     accused: false,
     dates: false,
     reports: false,
   });
-  
+
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -430,7 +429,7 @@ export default function Home() {
     warrantReturnDateFrom: "",
     warrantReturnDateTo: "",
     warrantReceivedButNotExecuted: false,
-    warrantIssuedMonthsAgo: "" as "" | "3" | "6" | "9" | "12",
+    warrantIssuedMonthsAgo: "",
     // Proclamation filters
     proclamationPrayed: "" as "" | "Yes" | "No",
     proclamationPrayerDateFrom: "",
@@ -442,7 +441,7 @@ export default function Home() {
     proclamationReturnDateFrom: "",
     proclamationReturnDateTo: "",
     proclamationReceivedButNotExecuted: false,
-    proclamationIssuedMonthsAgo: "" as "" | "3" | "6" | "9" | "12",
+    proclamationIssuedMonthsAgo: "",
     // Attachment filters
     attachmentPrayed: "" as "" | "Yes" | "No",
     attachmentPrayerDateFrom: "",
@@ -454,7 +453,7 @@ export default function Home() {
     attachmentReturnDateFrom: "",
     attachmentReturnDateTo: "",
     attachmentReceivedButNotExecuted: false,
-    attachmentIssuedMonthsAgo: "" as "" | "3" | "6" | "9" | "12",
+    attachmentIssuedMonthsAgo: "",
     // Date filters
     caseDateFrom: "",
     caseDateTo: "",
@@ -464,48 +463,55 @@ export default function Home() {
     reportR1: "" as "" | "Yes" | "No",
     reportR1DateFrom: "",
     reportR1DateTo: "",
-    reportR1IssuedMonthsAgo: "" as "" | "3" | "6",
+    reportR1IssuedMonthsAgo: "",
     reportSupervision: "" as "" | "Yes" | "No",
     reportSupervisionDateFrom: "",
     reportSupervisionDateTo: "",
     reportR2: "" as "" | "Yes" | "No",
     reportR2DateFrom: "",
     reportR2DateTo: "",
-    reportR2IssuedMonthsAgo: "" as "" | "3" | "6",
+    reportR2IssuedMonthsAgo: "",
     reportR3: "" as "" | "Yes" | "No",
     reportR3DateFrom: "",
     reportR3DateTo: "",
-    reportR3IssuedMonthsAgo: "" as "" | "3" | "6",
+    reportR3IssuedMonthsAgo: "",
     reportPR1: "" as "" | "Yes" | "No",
     reportPR1DateFrom: "",
     reportPR1DateTo: "",
-    reportPR1IssuedMonthsAgo: "" as "" | "3" | "6",
+    reportPR1IssuedMonthsAgo: "",
     reportPR2: "" as "" | "Yes" | "No",
     reportPR2DateFrom: "",
     reportPR2DateTo: "",
-    reportPR2IssuedMonthsAgo: "" as "" | "3" | "6",
+    reportPR2IssuedMonthsAgo: "",
     reportPR3: "" as "" | "Yes" | "No",
     reportPR3DateFrom: "",
     reportPR3DateTo: "",
-    reportPR3IssuedMonthsAgo: "" as "" | "3" | "6",
+    reportPR3IssuedMonthsAgo: "",
     reportFPR: "" as "" | "Yes" | "No",
     reportFPRDateFrom: "",
     reportFPRDateTo: "",
-    reportFPRIssuedMonthsAgo: "" as "" | "3" | "6",
+    reportFPRIssuedMonthsAgo: "",
     reportFPRWithoutChargesheet: false,
     reportFinalOrder: "" as "" | "Yes" | "No",
     reportFinalOrderDateFrom: "",
     reportFinalOrderDateTo: "",
-    reportFinalOrderIssuedMonthsAgo: "" as "" | "3" | "6",
+    reportFinalOrderIssuedMonthsAgo: "",
     reportFinalChargesheet: "" as "" | "Yes" | "No",
     reportFinalChargesheetDateFrom: "",
     reportFinalChargesheetDateTo: "",
-    reportFinalChargesheetIssuedMonthsAgo: "" as "" | "3" | "6",
+    reportFinalChargesheetIssuedMonthsAgo: "",
     finalChargesheetSubmitted: "" as "" | "Yes" | "No",
     finalChargesheetSubmissionDateFrom: "",
     finalChargesheetSubmissionDateTo: "",
     pageSize: 10 as 10 | 25 | 50,
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   const [data, setData] = useState<CaseRow[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -540,7 +546,7 @@ export default function Home() {
       setDataLoading(true);
       const response = await fetch("/api/cases?limit=1000");
       const result = await response.json();
-      
+
       if (result.success) {
         // Transform API data to match CaseRow type
         const transformedData: CaseRow[] = result.data.map((item: any) => {
@@ -559,23 +565,23 @@ export default function Home() {
           );
 
           return {
-          caseNo: item.caseNo,
-          year: item.year,
-          policeStation: item.policeStation,
+            caseNo: item.caseNo,
+            year: item.year,
+            policeStation: item.policeStation,
             crimeHead: item.crimeHead || "",
-          crimeSection: item.crimeSection || item.section || "",
-          punishmentCategory: item.punishmentCategory as "≤7 yrs" | ">7 yrs",
-          accused: item.accused || [],
+            crimeSection: item.crimeSection || item.section || "",
+            punishmentCategory: item.punishmentCategory as "≤7 yrs" | ">7 yrs",
+            accused: item.accused || [],
             caseStatus: caseStatus,
             decisionPendingStatus,
             caseDecisionStatus: item.caseDecisionStatus as string | undefined,
-          investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
-          priority: item.priority as Priority | undefined,
-          isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
+            investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
+            priority: item.priority as Priority | undefined,
+            isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
             reasonForPendency: item.reasonForPendency || [],
-          reports: item.reports,
-          finalChargesheetSubmitted: item.finalChargesheetSubmitted || false,
-          finalChargesheetSubmissionDate: item.finalChargesheetSubmissionDate,
+            reports: item.reports,
+            finalChargesheetSubmitted: item.finalChargesheetSubmitted || false,
+            finalChargesheetSubmissionDate: item.finalChargesheetSubmissionDate,
           };
         });
         setData(transformedData);
@@ -590,513 +596,513 @@ export default function Home() {
   // Original hardcoded data (kept as fallback/initial state)
   const [initialData] = useState<CaseRow[]>(() => {
     const seed: Array<Omit<CaseRow, "decisionPendingStatus"> & { decisionPending?: boolean }> = [
-    {
-      caseNo: "12/2023",
-      year: 2023,
-      policeStation: "Central PS",
-      crimeSection: "379 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Disposed",
-      priority: "Normal",
-      accused: [
-        { name: "Rakesh Kumar", status: "Arrested", arrestedDate: "2023-01-15" },
-        { name: "Suman Verma", status: "Arrested", arrestedDate: "2023-01-20" },
-      ],
-      reports: {
-        r1: "2023-01-12",
-        supervision: "2023-02-01",
-        r2: "2023-02-15",
-        r3: "2023-03-01",
-        pr1: "2023-03-05",
-        pr2: "2023-03-10",
-        pr3: "2023-03-12",
-        fpr: "2023-03-10",
-        finalOrder: "2023-03-15",
-        finalChargesheet: "2023-03-20",
+      {
+        caseNo: "12/2023",
+        year: 2023,
+        policeStation: "Central PS",
+        crimeSection: "379 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Disposed",
+        priority: "Normal",
+        accused: [
+          { name: "Rakesh Kumar", status: "Arrested", arrestedDate: "2023-01-15" },
+          { name: "Suman Verma", status: "Arrested", arrestedDate: "2023-01-20" },
+        ],
+        reports: {
+          r1: "2023-01-12",
+          supervision: "2023-02-01",
+          r2: "2023-02-15",
+          r3: "2023-03-01",
+          pr1: "2023-03-05",
+          pr2: "2023-03-10",
+          pr3: "2023-03-12",
+          fpr: "2023-03-10",
+          finalOrder: "2023-03-15",
+          finalChargesheet: "2023-03-20",
+        },
+        finalChargesheetSubmitted: true,
+        finalChargesheetSubmissionDate: "2023-03-20",
       },
-      finalChargesheetSubmitted: true,
-      finalChargesheetSubmissionDate: "2023-03-20",
-    },
-    {
-      caseNo: "77/2024",
-      year: 2024,
-      policeStation: "North Zone PS",
-      crimeSection: "420 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Detected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: true,
-      accused: [
-        { name: "Amit Sharma", status: "Arrested", arrestedDate: "2024-02-10" },
-        { name: "Priya Singh", status: "Not arrested" },
-        { name: "Rajesh Patel", status: "Not arrested" },
-        { name: "Deepak Yadav", status: "Decision pending" },
-      ],
-      reports: {
-        r1: "2024-02-12",
-        supervision: "2024-03-01",
-        r2: "2024-04-01",
-        r3: undefined,
-        pr1: "2024-04-05",
-        fpr: "2024-04-10",
-        finalChargesheet: undefined,
+      {
+        caseNo: "77/2024",
+        year: 2024,
+        policeStation: "North Zone PS",
+        crimeSection: "420 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Detected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: true,
+        accused: [
+          { name: "Amit Sharma", status: "Arrested", arrestedDate: "2024-02-10" },
+          { name: "Priya Singh", status: "Not arrested" },
+          { name: "Rajesh Patel", status: "Not arrested" },
+          { name: "Deepak Yadav", status: "Decision pending" },
+        ],
+        reports: {
+          r1: "2024-02-12",
+          supervision: "2024-03-01",
+          r2: "2024-04-01",
+          r3: undefined,
+          pr1: "2024-04-05",
+          fpr: "2024-04-10",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "05/2025",
-      year: 2025,
-      policeStation: "East Division PS",
-      crimeSection: "376 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Under investigation",
-      priority: "Under monitoring",
-      accused: [
-        { name: "Vikram Singh", status: "Decision pending" },
-      ],
-      reports: {
-        r1: undefined,
-        supervision: undefined,
-        r2: undefined,
-        r3: undefined,
-        fpr: undefined,
-        finalChargesheet: undefined,
+      {
+        caseNo: "05/2025",
+        year: 2025,
+        policeStation: "East Division PS",
+        crimeSection: "376 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Under investigation",
+        priority: "Under monitoring",
+        accused: [
+          { name: "Vikram Singh", status: "Decision pending" },
+        ],
+        reports: {
+          r1: undefined,
+          supervision: undefined,
+          r2: undefined,
+          r3: undefined,
+          fpr: undefined,
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "23/2024",
-      year: 2024,
-      policeStation: "South Sector PS",
-      crimeSection: "302 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Undetected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Mohit Agarwal", status: "Arrested", arrestedDate: "2024-01-15" },
-        { name: "Suresh Kumar", status: "Not arrested" },
-      ],
-      reports: {
-        r1: "2024-01-12",
-        supervision: "2024-01-25",
-        r2: "2024-02-15",
-        r3: "2024-03-01",
-        pr1: "2024-03-05",
-        pr2: "2024-03-10",
-        pr3: "2024-03-15",
-        fpr: "2024-03-20",
-        finalOrder: "2024-03-25",
-        finalChargesheet: "2024-04-01",
+      {
+        caseNo: "23/2024",
+        year: 2024,
+        policeStation: "South Sector PS",
+        crimeSection: "302 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Undetected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Mohit Agarwal", status: "Arrested", arrestedDate: "2024-01-15" },
+          { name: "Suresh Kumar", status: "Not arrested" },
+        ],
+        reports: {
+          r1: "2024-01-12",
+          supervision: "2024-01-25",
+          r2: "2024-02-15",
+          r3: "2024-03-01",
+          pr1: "2024-03-05",
+          pr2: "2024-03-10",
+          pr3: "2024-03-15",
+          fpr: "2024-03-20",
+          finalOrder: "2024-03-25",
+          finalChargesheet: "2024-04-01",
+        },
+        finalChargesheetSubmitted: true,
+        finalChargesheetSubmissionDate: "2024-04-05",
       },
-      finalChargesheetSubmitted: true,
-      finalChargesheetSubmissionDate: "2024-04-05",
-    },
-    {
-      caseNo: "45/2024",
-      year: 2024,
-      policeStation: "Harbour PS",
-      crimeSection: "406 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Detected",
-      priority: "Normal",
-      isPropertyProfessionalCrime: true,
-      accused: [
-        { name: "Ravi Mehta", status: "Arrested", arrestedDate: "2024-05-10" },
-        { name: "Kiran Desai", status: "Arrested", arrestedDate: "2024-05-12" },
-        { name: "Anil Patel", status: "Not arrested" },
-      ],
-      reports: {
-        r1: "2024-05-08",
-        supervision: "2024-05-20",
-        r2: "2024-06-15",
-        r3: undefined,
-        pr1: "2024-06-20",
-        pr2: undefined,
-        pr3: undefined,
-        fpr: "2024-07-01",
-        finalChargesheet: undefined,
+      {
+        caseNo: "45/2024",
+        year: 2024,
+        policeStation: "Harbour PS",
+        crimeSection: "406 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Detected",
+        priority: "Normal",
+        isPropertyProfessionalCrime: true,
+        accused: [
+          { name: "Ravi Mehta", status: "Arrested", arrestedDate: "2024-05-10" },
+          { name: "Kiran Desai", status: "Arrested", arrestedDate: "2024-05-12" },
+          { name: "Anil Patel", status: "Not arrested" },
+        ],
+        reports: {
+          r1: "2024-05-08",
+          supervision: "2024-05-20",
+          r2: "2024-06-15",
+          r3: undefined,
+          pr1: "2024-06-20",
+          pr2: undefined,
+          pr3: undefined,
+          fpr: "2024-07-01",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "89/2024",
-      year: 2024,
-      policeStation: "Airport PS",
-      crimeSection: "498A IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Detected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Rajesh Gupta", status: "Arrested", arrestedDate: "2024-08-01" },
-        { name: "Meera Gupta", status: "Not arrested" },
-      ],
-      reports: {
-        r1: "2024-07-28",
-        supervision: "2024-08-10",
-        r2: "2024-09-01",
-        r3: undefined,
-        pr1: "2024-09-05",
-        pr2: "2024-09-10",
-        fpr: "2024-09-15",
-        finalChargesheet: undefined,
+      {
+        caseNo: "89/2024",
+        year: 2024,
+        policeStation: "Airport PS",
+        crimeSection: "498A IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Detected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Rajesh Gupta", status: "Arrested", arrestedDate: "2024-08-01" },
+          { name: "Meera Gupta", status: "Not arrested" },
+        ],
+        reports: {
+          r1: "2024-07-28",
+          supervision: "2024-08-10",
+          r2: "2024-09-01",
+          r3: undefined,
+          pr1: "2024-09-05",
+          pr2: "2024-09-10",
+          fpr: "2024-09-15",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "34/2023",
-      year: 2023,
-      policeStation: "Central PS",
-      crimeSection: "384 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Disposed",
-      priority: "Normal",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Sunil Yadav", status: "Arrested", arrestedDate: "2023-06-10" },
-        { name: "Pankaj Singh", status: "Arrested", arrestedDate: "2023-06-12" },
-      ],
-      reports: {
-        r1: "2023-06-08",
-        supervision: "2023-06-25",
-        r2: "2023-07-15",
-        r3: "2023-08-01",
-        pr1: "2023-08-05",
-        pr2: "2023-08-10",
-        pr3: "2023-08-15",
-        fpr: "2023-08-20",
-        finalOrder: "2023-08-25",
-        finalChargesheet: "2023-09-01",
+      {
+        caseNo: "34/2023",
+        year: 2023,
+        policeStation: "Central PS",
+        crimeSection: "384 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Disposed",
+        priority: "Normal",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Sunil Yadav", status: "Arrested", arrestedDate: "2023-06-10" },
+          { name: "Pankaj Singh", status: "Arrested", arrestedDate: "2023-06-12" },
+        ],
+        reports: {
+          r1: "2023-06-08",
+          supervision: "2023-06-25",
+          r2: "2023-07-15",
+          r3: "2023-08-01",
+          pr1: "2023-08-05",
+          pr2: "2023-08-10",
+          pr3: "2023-08-15",
+          fpr: "2023-08-20",
+          finalOrder: "2023-08-25",
+          finalChargesheet: "2023-09-01",
+        },
+        finalChargesheetSubmitted: true,
+        finalChargesheetSubmissionDate: "2023-09-05",
       },
-      finalChargesheetSubmitted: true,
-      finalChargesheetSubmissionDate: "2023-09-05",
-    },
-    {
-      caseNo: "56/2024",
-      year: 2024,
-      policeStation: "North Zone PS",
-      crimeSection: "307 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Under investigation",
-      decisionPending: true,
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Vishal Sharma", status: "Decision pending" },
-        { name: "Rohit Verma", status: "Decision pending" },
-      ],
-      reports: {
-        r1: "2024-10-01",
-        supervision: "2024-10-15",
-        r2: undefined,
-        r3: undefined,
-        pr1: undefined,
-        pr2: undefined,
-        pr3: undefined,
-        fpr: undefined,
-        finalChargesheet: undefined,
+      {
+        caseNo: "56/2024",
+        year: 2024,
+        policeStation: "North Zone PS",
+        crimeSection: "307 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Under investigation",
+        decisionPending: true,
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Vishal Sharma", status: "Decision pending" },
+          { name: "Rohit Verma", status: "Decision pending" },
+        ],
+        reports: {
+          r1: "2024-10-01",
+          supervision: "2024-10-15",
+          r2: undefined,
+          r3: undefined,
+          pr1: undefined,
+          pr2: undefined,
+          pr3: undefined,
+          fpr: undefined,
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "91/2024",
-      year: 2024,
-      policeStation: "East Division PS",
-      crimeSection: "323 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Undetected",
-      priority: "Normal",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Amit Kumar", status: "Not arrested" },
-        { name: "Sandeep Singh", status: "Not arrested" },
-      ],
-      reports: {
-        r1: "2024-10-28",
-        supervision: "2024-11-05",
-        r2: "2024-11-20",
-        r3: undefined,
-        pr1: "2024-11-25",
-        fpr: "2024-12-01",
-        finalChargesheet: undefined,
+      {
+        caseNo: "91/2024",
+        year: 2024,
+        policeStation: "East Division PS",
+        crimeSection: "323 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Undetected",
+        priority: "Normal",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Amit Kumar", status: "Not arrested" },
+          { name: "Sandeep Singh", status: "Not arrested" },
+        ],
+        reports: {
+          r1: "2024-10-28",
+          supervision: "2024-11-05",
+          r2: "2024-11-20",
+          r3: undefined,
+          pr1: "2024-11-25",
+          fpr: "2024-12-01",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "102/2023",
-      year: 2023,
-      policeStation: "South Sector PS",
-      crimeSection: "395 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Disposed",
-      priority: "Normal",
-      isPropertyProfessionalCrime: true,
-      accused: [
-        { name: "Manish Kumar", status: "Arrested", arrestedDate: "2023-04-10" },
-        { name: "Ajay Singh", status: "Arrested", arrestedDate: "2023-04-12" },
-        { name: "Vijay Patel", status: "Arrested", arrestedDate: "2023-04-15" },
-        { name: "Sanjay Verma", status: "Not arrested" },
-      ],
-      reports: {
-        r1: "2023-04-08",
-        supervision: "2023-04-25",
-        r2: "2023-05-15",
-        r3: "2023-06-01",
-        pr1: "2023-06-05",
-        pr2: "2023-06-10",
-        pr3: "2023-06-15",
-        fpr: "2023-06-20",
-        finalOrder: "2023-06-25",
-        finalChargesheet: "2023-07-01",
+      {
+        caseNo: "102/2023",
+        year: 2023,
+        policeStation: "South Sector PS",
+        crimeSection: "395 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Disposed",
+        priority: "Normal",
+        isPropertyProfessionalCrime: true,
+        accused: [
+          { name: "Manish Kumar", status: "Arrested", arrestedDate: "2023-04-10" },
+          { name: "Ajay Singh", status: "Arrested", arrestedDate: "2023-04-12" },
+          { name: "Vijay Patel", status: "Arrested", arrestedDate: "2023-04-15" },
+          { name: "Sanjay Verma", status: "Not arrested" },
+        ],
+        reports: {
+          r1: "2023-04-08",
+          supervision: "2023-04-25",
+          r2: "2023-05-15",
+          r3: "2023-06-01",
+          pr1: "2023-06-05",
+          pr2: "2023-06-10",
+          pr3: "2023-06-15",
+          fpr: "2023-06-20",
+          finalOrder: "2023-06-25",
+          finalChargesheet: "2023-07-01",
+        },
+        finalChargesheetSubmitted: true,
+        finalChargesheetSubmissionDate: "2023-07-05",
       },
-      finalChargesheetSubmitted: true,
-      finalChargesheetSubmissionDate: "2023-07-05",
-    },
-    {
-      caseNo: "67/2024",
-      year: 2024,
-      policeStation: "Harbour PS",
-      crimeSection: "411 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Detected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: true,
-      accused: [
-        { name: "Karan Malhotra", status: "Arrested", arrestedDate: "2024-07-05" },
-        { name: "Arjun Kapoor", status: "Not arrested" },
-        { name: "Rahul Jain", status: "Decision pending" },
-      ],
-      reports: {
-        r1: "2024-07-03",
-        supervision: "2024-07-15",
-        r2: "2024-08-10",
-        r3: "2024-09-01",
-        pr1: "2024-09-05",
-        pr2: "2024-09-10",
-        fpr: "2024-09-15",
-        finalChargesheet: undefined,
+      {
+        caseNo: "67/2024",
+        year: 2024,
+        policeStation: "Harbour PS",
+        crimeSection: "411 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Detected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: true,
+        accused: [
+          { name: "Karan Malhotra", status: "Arrested", arrestedDate: "2024-07-05" },
+          { name: "Arjun Kapoor", status: "Not arrested" },
+          { name: "Rahul Jain", status: "Decision pending" },
+        ],
+        reports: {
+          r1: "2024-07-03",
+          supervision: "2024-07-15",
+          r2: "2024-08-10",
+          r3: "2024-09-01",
+          pr1: "2024-09-05",
+          pr2: "2024-09-10",
+          fpr: "2024-09-15",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "78/2023",
-      year: 2023,
-      policeStation: "Airport PS",
-      crimeSection: "506 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Disposed",
-      priority: "Normal",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Neeraj Sharma", status: "Arrested", arrestedDate: "2023-09-10" },
-      ],
-      reports: {
-        r1: "2023-09-08",
-        supervision: "2023-09-20",
-        r2: "2023-10-05",
-        r3: "2023-10-20",
-        pr1: "2023-10-25",
-        pr2: "2023-11-01",
-        pr3: "2023-11-05",
-        fpr: "2023-11-10",
-        finalOrder: "2023-11-15",
-        finalChargesheet: "2023-11-20",
+      {
+        caseNo: "78/2023",
+        year: 2023,
+        policeStation: "Airport PS",
+        crimeSection: "506 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Disposed",
+        priority: "Normal",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Neeraj Sharma", status: "Arrested", arrestedDate: "2023-09-10" },
+        ],
+        reports: {
+          r1: "2023-09-08",
+          supervision: "2023-09-20",
+          r2: "2023-10-05",
+          r3: "2023-10-20",
+          pr1: "2023-10-25",
+          pr2: "2023-11-01",
+          pr3: "2023-11-05",
+          fpr: "2023-11-10",
+          finalOrder: "2023-11-15",
+          finalChargesheet: "2023-11-20",
+        },
+        finalChargesheetSubmitted: true,
+        finalChargesheetSubmissionDate: "2023-11-25",
       },
-      finalChargesheetSubmitted: true,
-      finalChargesheetSubmissionDate: "2023-11-25",
-    },
-    {
-      caseNo: "113/2024",
-      year: 2024,
-      policeStation: "Central PS",
-      crimeSection: "363 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Undetected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Pradeep Kumar", status: "Not arrested" },
-        { name: "Manoj Singh", status: "Not arrested" },
-        { name: "Dinesh Patel", status: "Decision pending" },
-      ],
-      reports: {
-        r1: "2024-11-28",
-        supervision: "2024-12-05",
-        r2: undefined,
-        r3: undefined,
-        pr1: undefined,
-        pr2: undefined,
-        pr3: undefined,
-        fpr: undefined,
-        finalChargesheet: undefined,
+      {
+        caseNo: "113/2024",
+        year: 2024,
+        policeStation: "Central PS",
+        crimeSection: "363 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Undetected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Pradeep Kumar", status: "Not arrested" },
+          { name: "Manoj Singh", status: "Not arrested" },
+          { name: "Dinesh Patel", status: "Decision pending" },
+        ],
+        reports: {
+          r1: "2024-11-28",
+          supervision: "2024-12-05",
+          r2: undefined,
+          r3: undefined,
+          pr1: undefined,
+          pr2: undefined,
+          pr3: undefined,
+          fpr: undefined,
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "125/2024",
-      year: 2024,
-      policeStation: "North Zone PS",
-      crimeSection: "457 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Detected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: true,
-      accused: [
-        { name: "Nitin Sharma", status: "Arrested", arrestedDate: "2024-09-15" },
-        { name: "Ravi Kumar", status: "Not arrested" },
-      ],
-      reports: {
-        r1: "2024-09-12",
-        supervision: "2024-09-25",
-        r2: "2024-07-15",
-        r3: undefined,
-        pr1: "2024-10-05",
-        pr2: "2024-10-10",
-        fpr: "2024-10-20",
-        finalChargesheet: undefined,
+      {
+        caseNo: "125/2024",
+        year: 2024,
+        policeStation: "North Zone PS",
+        crimeSection: "457 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Detected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: true,
+        accused: [
+          { name: "Nitin Sharma", status: "Arrested", arrestedDate: "2024-09-15" },
+          { name: "Ravi Kumar", status: "Not arrested" },
+        ],
+        reports: {
+          r1: "2024-09-12",
+          supervision: "2024-09-25",
+          r2: "2024-07-15",
+          r3: undefined,
+          pr1: "2024-10-05",
+          pr2: "2024-10-10",
+          fpr: "2024-10-20",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "138/2024",
-      year: 2024,
-      policeStation: "South Sector PS",
-      crimeSection: "380 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Detected",
-      priority: "Normal",
-      isPropertyProfessionalCrime: true,
-      accused: [
-        { name: "Sahil Mehta", status: "Arrested", arrestedDate: "2024-08-20" },
-        { name: "Varun Patel", status: "Not arrested" },
-      ],
-      reports: {
-        r1: "2024-08-18",
-        supervision: "2024-08-30",
-        r2: "2024-06-10",
-        r3: undefined,
-        pr1: "2024-09-10",
-        fpr: "2024-09-25",
-        finalChargesheet: undefined,
+      {
+        caseNo: "138/2024",
+        year: 2024,
+        policeStation: "South Sector PS",
+        crimeSection: "380 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Detected",
+        priority: "Normal",
+        isPropertyProfessionalCrime: true,
+        accused: [
+          { name: "Sahil Mehta", status: "Arrested", arrestedDate: "2024-08-20" },
+          { name: "Varun Patel", status: "Not arrested" },
+        ],
+        reports: {
+          r1: "2024-08-18",
+          supervision: "2024-08-30",
+          r2: "2024-06-10",
+          r3: undefined,
+          pr1: "2024-09-10",
+          fpr: "2024-09-25",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "149/2024",
-      year: 2024,
-      policeStation: "Harbour PS",
-      crimeSection: "354 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Detected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Akhil Verma", status: "Arrested", arrestedDate: "2024-07-25" },
-      ],
-      reports: {
-        r1: "2024-07-23",
-        supervision: "2024-08-05",
-        r2: "2024-05-20",
-        r3: "2024-09-10",
-        pr1: "2024-09-15",
-        pr2: "2024-09-20",
-        fpr: "2024-10-01",
-        finalChargesheet: undefined,
+      {
+        caseNo: "149/2024",
+        year: 2024,
+        policeStation: "Harbour PS",
+        crimeSection: "354 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Detected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Akhil Verma", status: "Arrested", arrestedDate: "2024-07-25" },
+        ],
+        reports: {
+          r1: "2024-07-23",
+          supervision: "2024-08-05",
+          r2: "2024-05-20",
+          r3: "2024-09-10",
+          pr1: "2024-09-15",
+          pr2: "2024-09-20",
+          fpr: "2024-10-01",
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "156/2024",
-      year: 2024,
-      policeStation: "East Division PS",
-      crimeSection: "366 IPC",
-      punishmentCategory: ">7 yrs",
-      caseStatus: "Under investigation",
-      investigationStatus: "Undetected",
-      priority: "Under monitoring",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Yash Kumar", status: "Not arrested" },
-        { name: "Kunal Singh", status: "Decision pending" },
-      ],
-      reports: {
-        r1: "2024-11-10",
-        supervision: "2024-11-20",
-        r2: "2024-04-15",
-        r3: undefined,
-        pr1: undefined,
-        pr2: undefined,
-        pr3: undefined,
-        fpr: undefined,
-        finalChargesheet: undefined,
+      {
+        caseNo: "156/2024",
+        year: 2024,
+        policeStation: "East Division PS",
+        crimeSection: "366 IPC",
+        punishmentCategory: ">7 yrs",
+        caseStatus: "Under investigation",
+        investigationStatus: "Undetected",
+        priority: "Under monitoring",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Yash Kumar", status: "Not arrested" },
+          { name: "Kunal Singh", status: "Decision pending" },
+        ],
+        reports: {
+          r1: "2024-11-10",
+          supervision: "2024-11-20",
+          r2: "2024-04-15",
+          r3: undefined,
+          pr1: undefined,
+          pr2: undefined,
+          pr3: undefined,
+          fpr: undefined,
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "167/2024",
-      year: 2024,
-      policeStation: "Airport PS",
-      crimeSection: "417 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Under investigation",
-      decisionPending: true,
-      priority: "Normal",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Tarun Agarwal", status: "Decision pending" },
-      ],
-      reports: {
-        r1: "2024-12-01",
-        supervision: "2024-12-10",
-        r2: undefined,
-        r3: undefined,
-        pr1: undefined,
-        pr2: undefined,
-        pr3: undefined,
-        fpr: undefined,
-        finalChargesheet: undefined,
+      {
+        caseNo: "167/2024",
+        year: 2024,
+        policeStation: "Airport PS",
+        crimeSection: "417 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Under investigation",
+        decisionPending: true,
+        priority: "Normal",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Tarun Agarwal", status: "Decision pending" },
+        ],
+        reports: {
+          r1: "2024-12-01",
+          supervision: "2024-12-10",
+          r2: undefined,
+          r3: undefined,
+          pr1: undefined,
+          pr2: undefined,
+          pr3: undefined,
+          fpr: undefined,
+          finalChargesheet: undefined,
+        },
+        finalChargesheetSubmitted: false,
       },
-      finalChargesheetSubmitted: false,
-    },
-    {
-      caseNo: "178/2023",
-      year: 2023,
-      policeStation: "Central PS",
-      crimeSection: "427 IPC",
-      punishmentCategory: "\u22647 yrs",
-      caseStatus: "Disposed",
-      priority: "Normal",
-      isPropertyProfessionalCrime: false,
-      accused: [
-        { name: "Abhishek Gupta", status: "Arrested", arrestedDate: "2023-11-05" },
-        { name: "Rohit Yadav", status: "Arrested", arrestedDate: "2023-11-07" },
-      ],
-      reports: {
-        r1: "2023-11-03",
-        supervision: "2023-11-15",
-        r2: "2023-12-01",
-        r3: "2023-12-15",
-        pr1: "2023-12-20",
-        pr2: "2023-12-25",
-        pr3: "2024-01-01",
-        fpr: "2024-01-05",
-        finalOrder: "2024-01-10",
-        finalChargesheet: "2024-01-15",
+      {
+        caseNo: "178/2023",
+        year: 2023,
+        policeStation: "Central PS",
+        crimeSection: "427 IPC",
+        punishmentCategory: "\u22647 yrs",
+        caseStatus: "Disposed",
+        priority: "Normal",
+        isPropertyProfessionalCrime: false,
+        accused: [
+          { name: "Abhishek Gupta", status: "Arrested", arrestedDate: "2023-11-05" },
+          { name: "Rohit Yadav", status: "Arrested", arrestedDate: "2023-11-07" },
+        ],
+        reports: {
+          r1: "2023-11-03",
+          supervision: "2023-11-15",
+          r2: "2023-12-01",
+          r3: "2023-12-15",
+          pr1: "2023-12-20",
+          pr2: "2023-12-25",
+          pr3: "2024-01-01",
+          fpr: "2024-01-05",
+          finalOrder: "2024-01-10",
+          finalChargesheet: "2024-01-15",
+        },
+        finalChargesheetSubmitted: true,
+        finalChargesheetSubmissionDate: "2024-01-20",
       },
-      finalChargesheetSubmitted: true,
-      finalChargesheetSubmissionDate: "2024-01-20",
-    },
     ];
     return seed.map(({ decisionPending, ...rest }) => ({
       ...rest,
@@ -1104,18 +1110,32 @@ export default function Home() {
     }));
   });
 
+  // Helper function to check if a date is older than X days
+  const checkTimeAgo = (dateStr: string | undefined | null, daysThresholdStr: string) => {
+    if (!dateStr || !daysThresholdStr) return false;
+    const daysThreshold = Number(daysThresholdStr);
+    if (isNaN(daysThreshold)) return false;
+
+    const dateObj = new Date(dateStr);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - dateObj.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays > daysThreshold;
+  };
+
   const filtered = useMemo(() => {
     return data
       .map((row) => {
         // Check accused filters
         let matchedAccused: Accused[] = [];
-        const hasAccusedFilters = filters.accusedName || filters.accusedStatus || filters.accusedAddress || 
-          filters.accusedMobileNumber || filters.accusedAadhaarNumber || filters.accusedState || 
-          filters.accusedDistrict || filters.notice41AIssued || filters.warrantPrayed || 
+        const hasAccusedFilters = filters.accusedName || filters.accusedStatus || filters.accusedAddress ||
+          filters.accusedMobileNumber || filters.accusedAadhaarNumber || filters.accusedState ||
+          filters.accusedDistrict || filters.notice41AIssued || filters.warrantPrayed ||
           filters.warrantReceivedButNotExecuted || filters.warrantIssuedMonthsAgo ||
           filters.proclamationPrayed || filters.proclamationReceivedButNotExecuted || filters.proclamationIssuedMonthsAgo ||
           filters.attachmentPrayed || filters.attachmentReceivedButNotExecuted || filters.attachmentIssuedMonthsAgo;
-        
+
         if (hasAccusedFilters) {
           matchedAccused = row.accused.filter((acc: any) => {
             const nameMatch = !filters.accusedName || acc.name?.toLowerCase().includes(filters.accusedName.toLowerCase());
@@ -1125,7 +1145,7 @@ export default function Home() {
             const aadhaarMatch = !filters.accusedAadhaarNumber || acc.aadhaarNumber?.includes(filters.accusedAadhaarNumber);
             const stateMatch = !filters.accusedState || acc.state === filters.accusedState;
             const districtMatch = !filters.accusedDistrict || acc.district === filters.accusedDistrict;
-            
+
             // Notice 41A filters
             let notice41AMatch = true;
             if (filters.notice41AIssued) {
@@ -1141,7 +1161,7 @@ export default function Home() {
                 if (filters.notice41ADateTo && date > new Date(filters.notice41ADateTo)) notice41AMatch = false;
               }
             }
-            
+
             // Warrant filters
             let warrantMatch = true;
             if (filters.warrantPrayed === "Yes") {
@@ -1156,14 +1176,8 @@ export default function Home() {
             }
             if (filters.warrantIssuedMonthsAgo) {
               const prayerDate = acc.warrant?.prayerDate;
-              if (!prayerDate) {
+              if (!prayerDate || !checkTimeAgo(prayerDate, filters.warrantIssuedMonthsAgo)) {
                 warrantMatch = false;
-              } else {
-                const monthsAgo = Number(filters.warrantIssuedMonthsAgo);
-                const prayerDateObj = new Date(prayerDate);
-                const today = new Date();
-                const diffMonths = (today.getFullYear() - prayerDateObj.getFullYear()) * 12 + (today.getMonth() - prayerDateObj.getMonth());
-                if (diffMonths < monthsAgo) warrantMatch = false;
               }
             }
             if (filters.warrantPrayerDateFrom || filters.warrantPrayerDateTo) {
@@ -1198,7 +1212,7 @@ export default function Home() {
                 if (filters.warrantReturnDateTo && date > new Date(filters.warrantReturnDateTo)) warrantMatch = false;
               }
             }
-            
+
             // Proclamation filters
             let proclamationMatch = true;
             if (filters.proclamationPrayed === "Yes") {
@@ -1213,14 +1227,8 @@ export default function Home() {
             }
             if (filters.proclamationIssuedMonthsAgo) {
               const prayerDate = acc.proclamation?.prayerDate;
-              if (!prayerDate) {
+              if (!prayerDate || !checkTimeAgo(prayerDate, filters.proclamationIssuedMonthsAgo)) {
                 proclamationMatch = false;
-              } else {
-                const monthsAgo = Number(filters.proclamationIssuedMonthsAgo);
-                const prayerDateObj = new Date(prayerDate);
-                const today = new Date();
-                const diffMonths = (today.getFullYear() - prayerDateObj.getFullYear()) * 12 + (today.getMonth() - prayerDateObj.getMonth());
-                if (diffMonths < monthsAgo) proclamationMatch = false;
               }
             }
             if (filters.proclamationPrayerDateFrom || filters.proclamationPrayerDateTo) {
@@ -1255,7 +1263,7 @@ export default function Home() {
                 if (filters.proclamationReturnDateTo && date > new Date(filters.proclamationReturnDateTo)) proclamationMatch = false;
               }
             }
-            
+
             // Attachment filters
             let attachmentMatch = true;
             if (filters.attachmentPrayed === "Yes") {
@@ -1270,14 +1278,8 @@ export default function Home() {
             }
             if (filters.attachmentIssuedMonthsAgo) {
               const prayerDate = acc.attachment?.prayerDate;
-              if (!prayerDate) {
+              if (!prayerDate || !checkTimeAgo(prayerDate, filters.attachmentIssuedMonthsAgo)) {
                 attachmentMatch = false;
-              } else {
-                const monthsAgo = Number(filters.attachmentIssuedMonthsAgo);
-                const prayerDateObj = new Date(prayerDate);
-                const today = new Date();
-                const diffMonths = (today.getFullYear() - prayerDateObj.getFullYear()) * 12 + (today.getMonth() - prayerDateObj.getMonth());
-                if (diffMonths < monthsAgo) attachmentMatch = false;
               }
             }
             if (filters.attachmentPrayerDateFrom || filters.attachmentPrayerDateTo) {
@@ -1312,9 +1314,9 @@ export default function Home() {
                 if (filters.attachmentReturnDateTo && date > new Date(filters.attachmentReturnDateTo)) attachmentMatch = false;
               }
             }
-            
-            return nameMatch && statusMatch && addressMatch && mobileMatch && aadhaarMatch && 
-              stateMatch && districtMatch && notice41AMatch && warrantMatch && 
+
+            return nameMatch && statusMatch && addressMatch && mobileMatch && aadhaarMatch &&
+              stateMatch && districtMatch && notice41AMatch && warrantMatch &&
               proclamationMatch && attachmentMatch;
           });
         }
@@ -1329,14 +1331,14 @@ export default function Home() {
         if (filters.policeStation && row.policeStation !== filters.policeStation) return null;
         if (filters.crimeHead && (!row.crimeHead || row.crimeHead !== filters.crimeHead)) return null;
         if (filters.section && !row.crimeSection.toLowerCase().includes(filters.section.toLowerCase())) return null;
-        
+
         // Year filters
         if (filters.year && row.year !== Number(filters.year)) return null;
         if (filters.yearFrom && row.year < Number(filters.yearFrom)) return null;
         if (filters.yearTo && row.year > Number(filters.yearTo)) return null;
         if (filters.yearBefore && row.year >= Number(filters.yearBefore)) return null;
         if (filters.yearAfter && row.year <= Number(filters.yearAfter)) return null;
-        
+
         // Punishment filter
         if (filters.punishment.length) {
           const wantsLE7 = filters.punishment.includes("\u22647");
@@ -1346,51 +1348,51 @@ export default function Home() {
           } else if (wantsLE7 && row.punishmentCategory !== "\u22647 yrs") return null;
           else if (wantsGT7 && row.punishmentCategory !== ">7 yrs") return null;
         }
-        
+
         // Case status filter
         if (filters.caseStatus.length > 0 && !filters.caseStatus.includes(row.caseStatus)) return null;
-        
+
         // Decision Pending filter (derived from accused statuses)
         if (filters.decisionPendingStatus && row.decisionPendingStatus !== filters.decisionPendingStatus) return null;
-        
+
         // Case Decision Status filter
         if (filters.caseDecisionStatus && row.caseDecisionStatus !== filters.caseDecisionStatus) return null;
-        
+
         // Investigation status filter (only for "Under investigation" cases)
         if (filters.investigationStatus.length > 0) {
           if (row.caseStatus !== "Under investigation") return null;
           if (row.investigationStatus && !filters.investigationStatus.includes(row.investigationStatus)) return null;
         }
-        
+
         // Priority filter
         if (filters.priority.length > 0) {
           if (!row.priority || !filters.priority.includes(row.priority)) return null;
         }
-        
+
         // Property/Professional crime filter
         if (filters.isPropertyProfessionalCrime && !row.isPropertyProfessionalCrime) return null;
-        
+
         // Reason for Pendency filter
         if (filters.reasonForPendency.length > 0) {
           const caseReasons = row.reasonForPendency || [];
-          const hasMatchingReason = filters.reasonForPendency.some(filterReason => 
+          const hasMatchingReason = filters.reasonForPendency.some(filterReason =>
             caseReasons.includes(filterReason)
           );
           if (!hasMatchingReason) return null;
         }
-        
+
         // Accused count filters
         const totalAccused = row.accused.length;
         const arrestedCount = row.accused.filter(a => a.status === "Arrested").length;
         const unarrestedCount = row.accused.filter(a => a.status === "Not arrested").length;
-        
+
         if (filters.accusedCountMin && totalAccused < Number(filters.accusedCountMin)) return null;
         if (filters.accusedCountMax && totalAccused > Number(filters.accusedCountMax)) return null;
         if (filters.arrestedCountMin && arrestedCount < Number(filters.arrestedCountMin)) return null;
         if (filters.arrestedCountMax && arrestedCount > Number(filters.arrestedCountMax)) return null;
         if (filters.unarrestedCountMin && unarrestedCount < Number(filters.unarrestedCountMin)) return null;
         if (filters.unarrestedCountMax && unarrestedCount > Number(filters.unarrestedCountMax)) return null;
-        
+
         // Date filters (if we had case dates in data, we'd check them here)
         // For now, we'll check arrest dates
         if (filters.arrestDateFrom || filters.arrestDateTo) {
@@ -1407,23 +1409,22 @@ export default function Home() {
         // Report filters
         const reportsData = row.reports || {};
         const spReportsList = Array.isArray(reportsData.spReports) ? reportsData.spReports : [];
+        const dspReportsList = Array.isArray(reportsData.dspReports) ? reportsData.dspReports : [];
+
         const ensureReportPair = (idx: number) => {
-          if (spReportsList[idx]) {
-            return {
-              rLabel: spReportsList[idx].rLabel || `R${idx + 1}`,
-              rDate: spReportsList[idx].rDate || "",
-              prLabel: spReportsList[idx].prLabel || `PR${idx + 1}`,
-              prDate: spReportsList[idx].prDate || "",
-            };
-          }
+          const spReport = spReportsList[idx];
+          const dspReport = dspReportsList[idx];
+
           const legacyR = (reportsData as any)[`r${idx + 1}`];
           const legacyPR = (reportsData as any)[`pr${idx + 1}`];
-          if (!legacyR && !legacyPR) return null;
+
+          if (!spReport && !dspReport && !legacyR && !legacyPR) return null;
+
           return {
-            rLabel: `R${idx + 1}`,
-            rDate: legacyR || "",
-            prLabel: `PR${idx + 1}`,
-            prDate: legacyPR || "",
+            rLabel: spReport?.label || `R${idx + 1}`,
+            rDate: spReport?.date || legacyR || "",
+            prLabel: dspReport?.label || `PR${idx + 1}`,
+            prDate: dspReport?.date || legacyPR || "",
           };
         };
 
@@ -1443,12 +1444,7 @@ export default function Home() {
         if (filters.reportR1DateFrom && (!r1Date || new Date(r1Date) < new Date(filters.reportR1DateFrom))) return null;
         if (filters.reportR1DateTo && (!r1Date || new Date(r1Date) > new Date(filters.reportR1DateTo))) return null;
         if (filters.reportR1IssuedMonthsAgo) {
-          if (!r1Date) return null;
-          const monthsAgo = Number(filters.reportR1IssuedMonthsAgo);
-          const r1DateObj = new Date(r1Date);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - r1DateObj.getFullYear()) * 12 + (today.getMonth() - r1DateObj.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!r1Date || !checkTimeAgo(r1Date, filters.reportR1IssuedMonthsAgo)) return null;
         }
 
         if (filters.reportSupervision) {
@@ -1465,12 +1461,7 @@ export default function Home() {
         if (filters.reportR2DateFrom && (!r2Date || new Date(r2Date) < new Date(filters.reportR2DateFrom))) return null;
         if (filters.reportR2DateTo && (!r2Date || new Date(r2Date) > new Date(filters.reportR2DateTo))) return null;
         if (filters.reportR2IssuedMonthsAgo) {
-          if (!r2Date) return null;
-          const monthsAgo = Number(filters.reportR2IssuedMonthsAgo);
-          const r2DateObj = new Date(r2Date);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - r2DateObj.getFullYear()) * 12 + (today.getMonth() - r2DateObj.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!r2Date || !checkTimeAgo(r2Date, filters.reportR2IssuedMonthsAgo)) return null;
         }
 
         if (filters.reportR3) {
@@ -1480,12 +1471,7 @@ export default function Home() {
         if (filters.reportR3DateFrom && (!r3Date || new Date(r3Date) < new Date(filters.reportR3DateFrom))) return null;
         if (filters.reportR3DateTo && (!r3Date || new Date(r3Date) > new Date(filters.reportR3DateTo))) return null;
         if (filters.reportR3IssuedMonthsAgo) {
-          if (!r3Date) return null;
-          const monthsAgo = Number(filters.reportR3IssuedMonthsAgo);
-          const r3DateObj = new Date(r3Date);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - r3DateObj.getFullYear()) * 12 + (today.getMonth() - r3DateObj.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!r3Date || !checkTimeAgo(r3Date, filters.reportR3IssuedMonthsAgo)) return null;
         }
 
         if (filters.reportPR1) {
@@ -1495,12 +1481,7 @@ export default function Home() {
         if (filters.reportPR1DateFrom && (!pr1Date || new Date(pr1Date) < new Date(filters.reportPR1DateFrom))) return null;
         if (filters.reportPR1DateTo && (!pr1Date || new Date(pr1Date) > new Date(filters.reportPR1DateTo))) return null;
         if (filters.reportPR1IssuedMonthsAgo) {
-          if (!pr1Date) return null;
-          const monthsAgo = Number(filters.reportPR1IssuedMonthsAgo);
-          const pr1DateObj = new Date(pr1Date);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - pr1DateObj.getFullYear()) * 12 + (today.getMonth() - pr1DateObj.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!pr1Date || !checkTimeAgo(pr1Date, filters.reportPR1IssuedMonthsAgo)) return null;
         }
 
         if (filters.reportPR2) {
@@ -1510,12 +1491,7 @@ export default function Home() {
         if (filters.reportPR2DateFrom && (!pr2Date || new Date(pr2Date) < new Date(filters.reportPR2DateFrom))) return null;
         if (filters.reportPR2DateTo && (!pr2Date || new Date(pr2Date) > new Date(filters.reportPR2DateTo))) return null;
         if (filters.reportPR2IssuedMonthsAgo) {
-          if (!pr2Date) return null;
-          const monthsAgo = Number(filters.reportPR2IssuedMonthsAgo);
-          const pr2DateObj = new Date(pr2Date);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - pr2DateObj.getFullYear()) * 12 + (today.getMonth() - pr2DateObj.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!pr2Date || !checkTimeAgo(pr2Date, filters.reportPR2IssuedMonthsAgo)) return null;
         }
 
         if (filters.reportPR3) {
@@ -1525,12 +1501,7 @@ export default function Home() {
         if (filters.reportPR3DateFrom && (!pr3Date || new Date(pr3Date) < new Date(filters.reportPR3DateFrom))) return null;
         if (filters.reportPR3DateTo && (!pr3Date || new Date(pr3Date) > new Date(filters.reportPR3DateTo))) return null;
         if (filters.reportPR3IssuedMonthsAgo) {
-          if (!pr3Date) return null;
-          const monthsAgo = Number(filters.reportPR3IssuedMonthsAgo);
-          const pr3DateObj = new Date(pr3Date);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - pr3DateObj.getFullYear()) * 12 + (today.getMonth() - pr3DateObj.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!pr3Date || !checkTimeAgo(pr3Date, filters.reportPR3IssuedMonthsAgo)) return null;
         }
 
         if (filters.reportFPR) {
@@ -1541,12 +1512,7 @@ export default function Home() {
         if (filters.reportFPRDateTo && (!row.reports?.fpr || new Date(row.reports.fpr) > new Date(filters.reportFPRDateTo))) return null;
         // FPR issued more than X months ago
         if (filters.reportFPRIssuedMonthsAgo) {
-          if (!row.reports?.fpr) return null;
-          const monthsAgo = Number(filters.reportFPRIssuedMonthsAgo);
-          const fprDate = new Date(row.reports.fpr);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - fprDate.getFullYear()) * 12 + (today.getMonth() - fprDate.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!row.reports?.fpr || !checkTimeAgo(row.reports.fpr, filters.reportFPRIssuedMonthsAgo)) return null;
         }
         // FPR issued but charge sheet not submitted
         if (filters.reportFPRWithoutChargesheet) {
@@ -1562,12 +1528,7 @@ export default function Home() {
         if (filters.reportFinalOrderDateTo && (!row.reports?.finalOrder || new Date(row.reports.finalOrder) > new Date(filters.reportFinalOrderDateTo))) return null;
         // Final Order issued more than X months ago
         if (filters.reportFinalOrderIssuedMonthsAgo) {
-          if (!row.reports?.finalOrder) return null;
-          const monthsAgo = Number(filters.reportFinalOrderIssuedMonthsAgo);
-          const finalOrderDate = new Date(row.reports.finalOrder);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - finalOrderDate.getFullYear()) * 12 + (today.getMonth() - finalOrderDate.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!row.reports?.finalOrder || !checkTimeAgo(row.reports.finalOrder, filters.reportFinalOrderIssuedMonthsAgo)) return null;
         }
 
         if (filters.reportFinalChargesheet) {
@@ -1578,12 +1539,7 @@ export default function Home() {
         if (filters.reportFinalChargesheetDateTo && (!row.reports?.finalChargesheet || new Date(row.reports.finalChargesheet) > new Date(filters.reportFinalChargesheetDateTo))) return null;
         // Final Chargesheet issued more than X months ago
         if (filters.reportFinalChargesheetIssuedMonthsAgo) {
-          if (!row.reports?.finalChargesheet) return null;
-          const monthsAgo = Number(filters.reportFinalChargesheetIssuedMonthsAgo);
-          const finalChargesheetDate = new Date(row.reports.finalChargesheet);
-          const today = new Date();
-          const diffMonths = (today.getFullYear() - finalChargesheetDate.getFullYear()) * 12 + (today.getMonth() - finalChargesheetDate.getMonth());
-          if (diffMonths < monthsAgo) return null;
+          if (!row.reports?.finalChargesheet || !checkTimeAgo(row.reports.finalChargesheet, filters.reportFinalChargesheetIssuedMonthsAgo)) return null;
         }
 
         // Final charge sheet submission in court
@@ -1742,331 +1698,314 @@ export default function Home() {
     }
   }
 
+  // Reusable Time Ago Filter Component
+  const TimeAgoFilter = ({
+    value,
+    onChange,
+    label = "Issued More Than"
+  }: {
+    value: string,
+    onChange: (val: string) => void,
+    label?: string
+  }) => {
+    const isCustom = value && !["15", "30", "60", "90", "180", "270", "365"].includes(value);
+
+    return (
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+        <div className="flex gap-2">
+          <select
+            value={isCustom ? "custom" : value}
+            onChange={(e) => {
+              if (e.target.value === "custom") {
+                onChange(""); // Clear value to show input
+              } else {
+                onChange(e.target.value);
+              }
+            }}
+            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+          >
+            <option value="">Any time</option>
+            <option value="15">15 Days</option>
+            <option value="30">1 Month</option>
+            <option value="60">2 Months</option>
+            <option value="90">3 Months</option>
+            <option value="180">6 Months</option>
+            <option value="270">9 Months</option>
+            <option value="365">1 Year</option>
+            <option value="custom">Custom Days</option>
+          </select>
+          {(isCustom || value === "custom") && (
+            <input
+              type="number"
+              min="1"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Days"
+              className="w-24 px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <AuthGuard>
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-blue-900/30">
-        <div className="bg-white border-b border-slate-200 px-4 py-3">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <h1 className="text-xl font-bold text-slate-900">Case Search System</h1>
-            <div className="flex items-center gap-4">
-              {user?.role === "SuperAdmin" && (
-                <>
-              <Link
-                href="/dashboard"
-                className="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center gap-1"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7" />
-                  <rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" />
-                  <rect x="3" y="14" width="7" height="7" />
-                </svg>
-                Dashboard
-              </Link>
+      <div className="min-h-screen">
+        {/* Header */}
+        <header className="sticky top-0 z-20 bg-white border-b border-slate-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 flex items-center">
+                  <Image src="/logo.png" alt="Jharkhand" width={40} height={40} className="h-10 w-auto" />
+                </div>
+                <h1 className="text-xl font-bold text-slate-900 hidden md:block">Case Search System</h1>
+              </div>
+              <div className="flex items-center gap-4">
+                {user?.role === "SuperAdmin" && (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className="text-sm text-slate-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/admin"
+                      className="text-sm text-slate-600 hover:text-purple-700 font-medium flex items-center gap-1 transition-colors"
+                    >
+                      Admin
+                    </Link>
+                  </>
+                )}
+
+                {user?.role === "SuperAdmin" && (
                   <Link
-                    href="/admin"
-                    className="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center gap-1"
+                    href="/add"
+                    className="text-sm text-white bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors shadow-sm"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                      <path d="M2 17l10 5 10-5" />
-                      <path d="M2 12l10 5 10-5" />
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
-                    Admin
+                    <span className="hidden sm:inline">Add Case</span>
                   </Link>
-                </>
-              )}
-              <button
-                onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" });
-                  window.location.href = "/login";
-                }}
-                className="text-sm text-red-700 hover:text-red-800 font-medium flex items-center gap-1"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-                Logout
-              </button>
-              {user?.role === "SuperAdmin" && (
-              <Link
-                href="/add"
-                className="text-sm text-white bg-blue-800 hover:bg-blue-900 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add Case
-              </Link>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="bg-blue-900 text-white">
-          <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 grid place-content-center">
-                {/* <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg> */}
-                <Image src="/logo.png" alt="Jharkhand" width={36} height={36} />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-sm font-medium">{user?.email || "Loading..."}</div>
-                <div className="text-xs/5 text-blue-100">{user?.role || ""}</div>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-white/10 grid place-content-center">
-                <svg className="h-5 w-5 text-blue-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+                )}
 
-      {/* Content */}
-      <main className="mx-auto max-w-7xl p-4 md:p-6">
-        {/* Search Card */}
-        <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200">
-          <div className="px-4 py-4 md:px-6 md:py-5 border-b border-slate-200">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-blue-600/10 text-blue-700 grid place-content-center">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-              </div>
-              <div>
-                <h2 className="text-base md:text-lg font-semibold tracking-wide">Search Cases</h2>
-                <p className="text-xs md:text-sm text-slate-600">Use filters to quickly locate a case</p>
-              </div>
-            </div>
-          </div>
+                <div className="h-6 w-px bg-slate-200 mx-2"></div>
 
-          <div className="px-4 py-4 md:px-6 md:py-6 space-y-6">
-            {/* Case Identification */}
-            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-                </svg>
-                Case Identification
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Number</label>
-                  <input value={filters.caseNo} onChange={(e) => setFilters({ ...filters, caseNo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="e.g., 77/2024" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Police Station</label>
-                  <input list="ps-list" value={filters.policeStation} onChange={(e) => setFilters({ ...filters, policeStation: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Search station" />
-                  <datalist id="ps-list">
-                    {POLICE_STATIONS.map((ps) => (
-                      <option key={ps} value={ps} />
-                    ))}
-                  </datalist>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Crime Head</label>
-                  <select
-                    value={filters.crimeHead}
-                    onChange={(e) => setFilters({ ...filters, crimeHead: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                <div className="flex items-center gap-3">
+                  <div className="text-right hidden sm:block">
+                    <div className="text-sm font-medium text-slate-900">{user?.email || "Loading..."}</div>
+                    <div className="text-xs text-slate-500">{user?.role || ""}</div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await fetch("/api/auth/logout", { method: "POST" });
+                      window.location.href = "/login";
+                    }}
+                    className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
+                    title="Logout"
                   >
-                    <option value="">All Crime Heads</option>
-                    {crimeHeads.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="mx-auto max-w-7xl p-4 md:p-6">
+          {/* Search Card */}
+          <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200">
+            <div className="px-4 py-4 md:px-6 md:py-5 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-blue-600/10 text-blue-700 grid place-content-center">
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Section</label>
-                  <input value={filters.section} onChange={(e) => setFilters({ ...filters, section: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="e.g., 420 IPC" />
+                  <h2 className="text-base md:text-lg font-semibold tracking-wide">Search Cases</h2>
+                  <p className="text-xs md:text-sm text-slate-600">Use filters to quickly locate a case</p>
                 </div>
               </div>
             </div>
 
-            {/* Year Filters */}
-            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                Year Filter
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Exact Year</label>
-                  <select value={filters.year} onChange={(e) => setFilters({ ...filters, year: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                    <option value="">All Years</option>
-                    {years.map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Year Range</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">From</label>
-                      <select value={filters.yearFrom} onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
-                        <option value="">Any</option>
-                        {years.map((y) => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">To</label>
-                      <select value={filters.yearTo} onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
-                        <option value="">Any</option>
-                        {years.map((y) => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                    </div>
+            <div className="px-4 py-4 md:px-6 md:py-6 space-y-6">
+              {/* Case Identification */}
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
+                  </svg>
+                  Case Identification
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Number</label>
+                    <input value={filters.caseNo} onChange={(e) => setFilters({ ...filters, caseNo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="e.g., 77/2024" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Police Station</label>
+                    <input list="ps-list" value={filters.policeStation} onChange={(e) => setFilters({ ...filters, policeStation: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Search station" />
+                    <datalist id="ps-list">
+                      {POLICE_STATIONS.map((ps) => (
+                        <option key={ps} value={ps} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Crime Head</label>
+                    <select
+                      value={filters.crimeHead}
+                      onChange={(e) => setFilters({ ...filters, crimeHead: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                    >
+                      <option value="">All Crime Heads</option>
+                      {crimeHeads.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Section</label>
+                    <input value={filters.section} onChange={(e) => setFilters({ ...filters, section: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="e.g., 420 IPC" />
                   </div>
                 </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Year Comparison</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Before</label>
-                      <select value={filters.yearBefore} onChange={(e) => setFilters({ ...filters, yearBefore: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
-                        <option value="">Any</option>
-                        {years.map((y) => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
+              </div>
+
+              {/* Year Filters */}
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  Year Filter
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Exact Year</label>
+                    <select value={filters.year} onChange={(e) => setFilters({ ...filters, year: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                      <option value="">All Years</option>
+                      {years.map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Year Range</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5">From</label>
+                        <select value={filters.yearFrom} onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
+                          <option value="">Any</option>
+                          {years.map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5">To</label>
+                        <select value={filters.yearTo} onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
+                          <option value="">Any</option>
+                          {years.map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">After</label>
-                      <select value={filters.yearAfter} onChange={(e) => setFilters({ ...filters, yearAfter: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
-                        <option value="">Any</option>
-                        {years.map((y) => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
+                  </div>
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Year Comparison</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5">Before</label>
+                        <select value={filters.yearBefore} onChange={(e) => setFilters({ ...filters, yearBefore: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
+                          <option value="">Any</option>
+                          {years.map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5">After</label>
+                        <select value={filters.yearAfter} onChange={(e) => setFilters({ ...filters, yearAfter: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm">
+                          <option value="">Any</option>
+                          {years.map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Case Details */}
-            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10 9 9 9 8 9" />
-                </svg>
-                Case Details
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Punishment Range</label>
-                  <div className="flex gap-4 pt-2">
-                    <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.punishment.includes("\u22647")}
-                        onChange={(e) => {
-                          const set = new Set(filters.punishment);
-                          if (e.target.checked) set.add("\u22647"); else set.delete("\u22647");
-                          setFilters({ ...filters, punishment: Array.from(set) as Array<"\u22647" | ">7"> });
-                        }}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      ≤7 Years
-                    </label>
-                    <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.punishment.includes(">7")}
-                        onChange={(e) => {
-                          const set = new Set(filters.punishment);
-                          if (e.target.checked) set.add(">7"); else set.delete(">7");
-                          setFilters({ ...filters, punishment: Array.from(set) as Array<"\u22647" | ">7"> });
-                        }}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      {">7 Years"}
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Status</label>
-                  <div className="flex flex-col gap-2 pt-2">
-                    {(["Disposed", "Under investigation"] as CaseStatus[]).map((status) => (
-                      <label key={status} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+              {/* Case Details */}
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h3 className="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                  <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                  Case Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Punishment Range</label>
+                    <div className="flex gap-4 pt-2">
+                      <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={filters.caseStatus.includes(status)}
+                          checked={filters.punishment.includes("\u22647")}
                           onChange={(e) => {
-                            const set = new Set(filters.caseStatus);
-                            if (e.target.checked) set.add(status); else set.delete(status);
-                            setFilters({ ...filters, caseStatus: Array.from(set) });
+                            const set = new Set(filters.punishment);
+                            if (e.target.checked) set.add("\u22647"); else set.delete("\u22647");
+                            setFilters({ ...filters, punishment: Array.from(set) as Array<"\u22647" | ">7"> });
                           }}
                           className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         />
-                        {status}
+                        ≤7 Years
                       </label>
-                    ))}
+                      <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filters.punishment.includes(">7")}
+                          onChange={(e) => {
+                            const set = new Set(filters.punishment);
+                            if (e.target.checked) set.add(">7"); else set.delete(">7");
+                            setFilters({ ...filters, punishment: Array.from(set) as Array<"\u22647" | ">7"> });
+                          }}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {">7 Years"}
+                      </label>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Status (Accused)</label>
-                  <select
-                    value={filters.decisionPendingStatus}
-                    onChange={(e) =>
-                      setFilters({ ...filters, decisionPendingStatus: e.target.value as "" | DecisionPendingStatus })
-                    }
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="">All statuses</option>
-                    {DECISION_PENDING_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Decision Status</label>
-                  <select
-                    value={filters.caseDecisionStatus}
-                    onChange={(e) =>
-                      setFilters({ ...filters, caseDecisionStatus: e.target.value as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency" })
-                    }
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="">All statuses</option>
-                    <option value="True">True</option>
-                    <option value="False">False</option>
-                    <option value="Partial Pendency">Partial Pendency</option>
-                    <option value="Complete Pendency">Complete Pendency</option>
-                  </select>
-                </div>
-                {filters.caseStatus.includes("Under investigation") && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Investigation Status</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Status</label>
                     <div className="flex flex-col gap-2 pt-2">
-                      {(["Detected", "Undetected"] as InvestigationStatus[]).map((status) => (
+                      {(["Disposed", "Under investigation"] as CaseStatus[]).map((status) => (
                         <label key={status} className="inline-flex items-center gap-2 text-sm cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={filters.investigationStatus.includes(status)}
+                            checked={filters.caseStatus.includes(status)}
                             onChange={(e) => {
-                              const set = new Set(filters.investigationStatus);
+                              const set = new Set(filters.caseStatus);
                               if (e.target.checked) set.add(status); else set.delete(status);
-                              setFilters({ ...filters, investigationStatus: Array.from(set) });
+                              setFilters({ ...filters, caseStatus: Array.from(set) });
                             }}
                             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                           />
@@ -2075,1063 +2014,1138 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
-                  <div className="flex flex-col gap-2 pt-2">
-                    {(["Under monitoring", "Normal"] as Priority[]).map((priority) => (
-                      <label key={priority} className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.priority.includes(priority)}
-                          onChange={(e) => {
-                            const set = new Set(filters.priority);
-                            if (e.target.checked) set.add(priority); else set.delete(priority);
-                            setFilters({ ...filters, priority: Array.from(set) });
-                          }}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        {priority}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Property/Professional Crime</label>
-                  <label className="inline-flex items-center gap-2 text-sm pt-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.isPropertyProfessionalCrime}
-                      onChange={(e) => setFilters({ ...filters, isPropertyProfessionalCrime: e.target.checked })}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    Identify property/professional crimes
-                  </label>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-slate-700">Reason for Pendency</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddReasonModal(true)}
-                      className="text-xs text-blue-700 hover:text-blue-800 font-medium hover:underline"
-                      title="Add new reason (Admin)"
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Status (Accused)</label>
+                    <select
+                      value={filters.decisionPendingStatus}
+                      onChange={(e) =>
+                        setFilters({ ...filters, decisionPendingStatus: e.target.value as "" | DecisionPendingStatus })
+                      }
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                     >
-                      + Add
-                    </button>
+                      <option value="">All statuses</option>
+                      {DECISION_PENDING_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  {reasonForPendencyOptions.length === 0 ? (
-                    <p className="text-sm text-slate-500 py-2">Loading options...</p>
-                  ) : (
-                    <>
-                  <select
-                    multiple
-                    value={filters.reasonForPendency}
-                    onChange={(e) => {
-                      const selected = Array.from(e.target.selectedOptions, option => option.value);
-                      setFilters({ ...filters, reasonForPendency: selected });
-                    }}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                    size={4}
-                  >
-                    {reasonForPendencyOptions.map((reason) => (
-                      <option key={reason} value={reason}>{reason}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-slate-500 mt-1.5">Hold Ctrl/Cmd to select multiple</p>
-                    </>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Decision Status</label>
+                    <select
+                      value={filters.caseDecisionStatus}
+                      onChange={(e) =>
+                        setFilters({ ...filters, caseDecisionStatus: e.target.value as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency" })
+                      }
+                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                    >
+                      <option value="">All statuses</option>
+                      <option value="True">True</option>
+                      <option value="False">False</option>
+                      <option value="Partial Pendency">Partial Pendency</option>
+                      <option value="Complete Pendency">Complete Pendency</option>
+                    </select>
+                  </div>
+                  {filters.caseStatus.includes("Under investigation") && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Investigation Status</label>
+                      <div className="flex flex-col gap-2 pt-2">
+                        {(["Detected", "Undetected"] as InvestigationStatus[]).map((status) => (
+                          <label key={status} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.investigationStatus.includes(status)}
+                              onChange={(e) => {
+                                const set = new Set(filters.investigationStatus);
+                                if (e.target.checked) set.add(status); else set.delete(status);
+                                setFilters({ ...filters, investigationStatus: Array.from(set) });
+                              }}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            {status}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Priority</label>
+                    <div className="flex flex-col gap-2 pt-2">
+                      {(["Under monitoring", "Normal"] as Priority[]).map((priority) => (
+                        <label key={priority} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.priority.includes(priority)}
+                            onChange={(e) => {
+                              const set = new Set(filters.priority);
+                              if (e.target.checked) set.add(priority); else set.delete(priority);
+                              setFilters({ ...filters, priority: Array.from(set) });
+                            }}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          {priority}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Property/Professional Crime</label>
+                    <label className="inline-flex items-center gap-2 text-sm pt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.isPropertyProfessionalCrime}
+                        onChange={(e) => setFilters({ ...filters, isPropertyProfessionalCrime: e.target.checked })}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      Identify property/professional crimes
+                    </label>
+                  </div>
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-sm font-medium text-slate-700">Reason for Pendency</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddReasonModal(true)}
+                        className="text-xs text-blue-700 hover:text-blue-800 font-medium hover:underline"
+                        title="Add new reason (Admin)"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    {reasonForPendencyOptions.length === 0 ? (
+                      <p className="text-sm text-slate-500 py-2">Loading options...</p>
+                    ) : (
+                      <>
+                        <select
+                          multiple
+                          value={filters.reasonForPendency}
+                          onChange={(e) => {
+                            const selected = Array.from(e.target.selectedOptions, option => option.value);
+                            setFilters({ ...filters, reasonForPendency: selected });
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                          size={4}
+                        >
+                          {reasonForPendencyOptions.map((reason) => (
+                            <option key={reason} value={reason}>{reason}</option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-slate-500 mt-1.5">Hold Ctrl/Cmd to select multiple</p>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Accused Filters */}
-            <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleSection('accused')}
-                className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
-              >
-                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                  <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                  Accused Information
-                </h3>
-                <svg 
-                  className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.accused ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2"
+              {/* Accused Filters */}
+              <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('accused')}
+                  className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
                 >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {expandedSections.accused && (
-                <div className="px-5 pb-5 space-y-6">
-                  {/* Basic Accused Information */}
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Basic Information</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Name</label>
-                  <input value={filters.accusedName} onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter name" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Status</label>
-                  <select value={filters.accusedStatus} onChange={(e) => setFilters({ ...filters, accusedStatus: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                    <option value="">All Status</option>
-                    <option>Arrested</option>
-                    <option>Not arrested</option>
-                    <option>Decision pending</option>
-                  </select>
-                </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Address</label>
-                        <input value={filters.accusedAddress} onChange={(e) => setFilters({ ...filters, accusedAddress: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter address" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Mobile Number</label>
-                        <input value={filters.accusedMobileNumber} onChange={(e) => setFilters({ ...filters, accusedMobileNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter mobile number" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Aadhaar Number</label>
-                        <input value={filters.accusedAadhaarNumber} onChange={(e) => setFilters({ ...filters, accusedAadhaarNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter Aadhaar number" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">State</label>
-                        <select value={filters.accusedState} onChange={(e) => setFilters({ ...filters, accusedState: e.target.value, accusedDistrict: "" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                          <option value="">All States</option>
-                          {INDIAN_STATES.map((state) => (
-                            <option key={state} value={state}>{state}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">District</label>
-                        <select value={filters.accusedDistrict} onChange={(e) => setFilters({ ...filters, accusedDistrict: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" disabled={!filters.accusedState}>
-                          <option value="">All Districts</option>
-                          {filters.accusedState && DISTRICTS_BY_STATE[filters.accusedState]?.map((district) => (
-                            <option key={district} value={district}>{district}</option>
-                          ))}
-                        </select>
+                  <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    Accused Information
+                  </h3>
+                  <svg
+                    className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.accused ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {expandedSections.accused && (
+                  <div className="px-5 pb-5 space-y-6">
+                    {/* Basic Accused Information */}
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Basic Information</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Name</label>
+                          <input value={filters.accusedName} onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter name" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Accused Status</label>
+                          <select value={filters.accusedStatus} onChange={(e) => setFilters({ ...filters, accusedStatus: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">All Status</option>
+                            <option>Arrested</option>
+                            <option>Not arrested</option>
+                            <option>Decision pending</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Address</label>
+                          <input value={filters.accusedAddress} onChange={(e) => setFilters({ ...filters, accusedAddress: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter address" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Mobile Number</label>
+                          <input value={filters.accusedMobileNumber} onChange={(e) => setFilters({ ...filters, accusedMobileNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter mobile number" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Aadhaar Number</label>
+                          <input value={filters.accusedAadhaarNumber} onChange={(e) => setFilters({ ...filters, accusedAadhaarNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Enter Aadhaar number" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">State</label>
+                          <select value={filters.accusedState} onChange={(e) => setFilters({ ...filters, accusedState: e.target.value, accusedDistrict: "" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                            <option value="">All States</option>
+                            {INDIAN_STATES.map((state) => (
+                              <option key={state} value={state}>{state}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">District</label>
+                          <select value={filters.accusedDistrict} onChange={(e) => setFilters({ ...filters, accusedDistrict: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" disabled={!filters.accusedState}>
+                            <option value="">All Districts</option>
+                            {filters.accusedState && DISTRICTS_BY_STATE[filters.accusedState]?.map((district) => (
+                              <option key={district} value={district}>{district}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Accused Counts */}
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Accused Counts</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Accused Count</label>
-                  <div className="grid grid-cols-2 gap-2">
+                    {/* Accused Counts */}
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                      <input type="number" min="0" value={filters.accusedCountMin} onChange={(e) => setFilters({ ...filters, accusedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Accused Counts</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Total Accused Count</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                              <input type="number" min="0" value={filters.accusedCountMin} onChange={(e) => setFilters({ ...filters, accusedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                              <input type="number" min="0" value={filters.accusedCountMax} onChange={(e) => setFilters({ ...filters, accusedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrested Count</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                              <input type="number" min="0" value={filters.arrestedCountMin} onChange={(e) => setFilters({ ...filters, arrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                              <input type="number" min="0" value={filters.arrestedCountMax} onChange={(e) => setFilters({ ...filters, arrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Unarrested Count</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1.5">Min</label>
+                              <input type="number" min="0" value={filters.unarrestedCountMin} onChange={(e) => setFilters({ ...filters, unarrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-500 mb-1.5">Max</label>
+                              <input type="number" min="0" value={filters.unarrestedCountMax} onChange={(e) => setFilters({ ...filters, unarrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Notice 41A */}
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                      <input type="number" min="0" value={filters.accusedCountMax} onChange={(e) => setFilters({ ...filters, accusedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Notice 41A</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="flex items-center">
+                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={filters.notice41AIssued}
+                              onChange={(e) => setFilters({ ...filters, notice41AIssued: e.target.checked })}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Notice 41A Issued
+                          </label>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Notice Date From</label>
+                          <input type="date" value={filters.notice41ADateFrom} onChange={(e) => setFilters({ ...filters, notice41ADateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Notice Date To</label>
+                          <input type="date" value={filters.notice41ADateTo} onChange={(e) => setFilters({ ...filters, notice41ADateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                      <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrested Count</label>
-                  <div className="grid grid-cols-2 gap-2">
+
+                    {/* Warrant */}
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                      <input type="number" min="0" value={filters.arrestedCountMin} onChange={(e) => setFilters({ ...filters, arrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Warrant</h4>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Prayed</label>
+                            <select value={filters.warrantPrayed} onChange={(e) => setFilters({ ...filters, warrantPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center">
+                            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.warrantReceivedButNotExecuted}
+                                onChange={(e) => setFilters({ ...filters, warrantReceivedButNotExecuted: e.target.checked })}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              Warrant Received but Not Executed
+                            </label>
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.warrantIssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, warrantIssuedMonthsAgo: val })}
+                              label="Warrant Issued More Than"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
+                            <input type="date" value={filters.warrantPrayerDateFrom} onChange={(e) => setFilters({ ...filters, warrantPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
+                            <input type="date" value={filters.warrantPrayerDateTo} onChange={(e) => setFilters({ ...filters, warrantPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
+                            <input type="date" value={filters.warrantReceiptDateFrom} onChange={(e) => setFilters({ ...filters, warrantReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
+                            <input type="date" value={filters.warrantReceiptDateTo} onChange={(e) => setFilters({ ...filters, warrantReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
+                            <input type="date" value={filters.warrantExecutionDateFrom} onChange={(e) => setFilters({ ...filters, warrantExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
+                            <input type="date" value={filters.warrantExecutionDateTo} onChange={(e) => setFilters({ ...filters, warrantExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Proclamation */}
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                      <input type="number" min="0" value={filters.arrestedCountMax} onChange={(e) => setFilters({ ...filters, arrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Proclamation</h4>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Prayed</label>
+                            <select value={filters.proclamationPrayed} onChange={(e) => setFilters({ ...filters, proclamationPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center">
+                            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.proclamationReceivedButNotExecuted}
+                                onChange={(e) => setFilters({ ...filters, proclamationReceivedButNotExecuted: e.target.checked })}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              Proclamation Received but Not Executed
+                            </label>
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.proclamationIssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, proclamationIssuedMonthsAgo: val })}
+                              label="Proclamation Issued More Than"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
+                            <input type="date" value={filters.proclamationPrayerDateFrom} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
+                            <input type="date" value={filters.proclamationPrayerDateTo} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
+                            <input type="date" value={filters.proclamationReceiptDateFrom} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
+                            <input type="date" value={filters.proclamationReceiptDateTo} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
+                            <input type="date" value={filters.proclamationExecutionDateFrom} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
+                            <input type="date" value={filters.proclamationExecutionDateTo} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                      <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Unarrested Count</label>
-                  <div className="grid grid-cols-2 gap-2">
+
+                    {/* Attachment */}
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Min</label>
-                      <input type="number" min="0" value={filters.unarrestedCountMin} onChange={(e) => setFilters({ ...filters, unarrestedCountMin: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Min" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1.5">Max</label>
-                      <input type="number" min="0" value={filters.unarrestedCountMax} onChange={(e) => setFilters({ ...filters, unarrestedCountMax: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" placeholder="Max" />
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Attachment</h4>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Prayed</label>
+                            <select value={filters.attachmentPrayed} onChange={(e) => setFilters({ ...filters, attachmentPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center">
+                            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={filters.attachmentReceivedButNotExecuted}
+                                onChange={(e) => setFilters({ ...filters, attachmentReceivedButNotExecuted: e.target.checked })}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              Attachment Received but Not Executed
+                            </label>
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.attachmentIssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, attachmentIssuedMonthsAgo: val })}
+                              label="Attachment Issued More Than"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
+                            <input type="date" value={filters.attachmentPrayerDateFrom} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
+                            <input type="date" value={filters.attachmentPrayerDateTo} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
+                            <input type="date" value={filters.attachmentReceiptDateFrom} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
+                            <input type="date" value={filters.attachmentReceiptDateTo} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
+                            <input type="date" value={filters.attachmentExecutionDateFrom} onChange={(e) => setFilters({ ...filters, attachmentExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
+                            <input type="date" value={filters.attachmentExecutionDateTo} onChange={(e) => setFilters({ ...filters, attachmentExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Notice 41A */}
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Notice 41A</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div className="flex items-center">
-                        <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={filters.notice41AIssued}
-                            onChange={(e) => setFilters({ ...filters, notice41AIssued: e.target.checked })}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          Notice 41A Issued
-                        </label>
+              {/* Advanced Filters Toggle */}
+              <div className="flex items-center justify-between py-2">
+                <div className="flex-1 border-t border-slate-200"></div>
+                <button
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className="mx-4 px-4 py-2 text-sm font-medium text-blue-700 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  {showAdvancedFilters ? (
+                    <>
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15" /></svg>
+                      Hide Advanced Filters
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+                      Show Advanced Filters
+                    </>
+                  )}
+                </button>
+                <div className="flex-1 border-t border-slate-200"></div>
+              </div>
+
+              {/* Advanced Filters */}
+              {showAdvancedFilters && (
+                <div className="space-y-6">
+                  {/* Date Filters */}
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection('dates')}
+                      className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                          <line x1="16" y1="2" x2="16" y2="6" />
+                          <line x1="8" y1="2" x2="8" y2="6" />
+                          <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                        Date Filters
+                      </h3>
+                      <svg
+                        className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.dates ? 'rotate-180' : ''}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {expandedSections.dates && (
+                      <div className="px-5 pb-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date From</label>
+                            <input type="date" value={filters.caseDateFrom} onChange={(e) => setFilters({ ...filters, caseDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date To</label>
+                            <input type="date" value={filters.caseDateTo} onChange={(e) => setFilters({ ...filters, caseDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrest Date From</label>
+                            <input type="date" value={filters.arrestDateFrom} onChange={(e) => setFilters({ ...filters, arrestDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrest Date To</label>
+                            <input type="date" value={filters.arrestDateTo} onChange={(e) => setFilters({ ...filters, arrestDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Notice Date From</label>
-                        <input type="date" value={filters.notice41ADateFrom} onChange={(e) => setFilters({ ...filters, notice41ADateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">Notice Date To</label>
-                        <input type="date" value={filters.notice41ADateTo} onChange={(e) => setFilters({ ...filters, notice41ADateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                      </div>
-                    </div>
+                    )}
                   </div>
 
-                  {/* Warrant */}
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Warrant</h4>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Prayed</label>
-                          <select value={filters.warrantPrayed} onChange={(e) => setFilters({ ...filters, warrantPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                            <option value="">All</option>
-                            <option value="Yes">Yes</option>
-                            <option value="No">No</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center">
-                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.warrantReceivedButNotExecuted}
-                              onChange={(e) => setFilters({ ...filters, warrantReceivedButNotExecuted: e.target.checked })}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  {/* Report Filters */}
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection('reports')}
+                      className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                        </svg>
+                        Report Filters
+                      </h3>
+                      <svg
+                        className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.reports ? 'rotate-180' : ''}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {expandedSections.reports && (
+                      <div className="px-5 pb-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {/* R1 Report */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Report</label>
+                            <select value={filters.reportR1} onChange={(e) => setFilters({ ...filters, reportR1: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Date From</label>
+                            <input type="date" value={filters.reportR1DateFrom} onChange={(e) => setFilters({ ...filters, reportR1DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Date To</label>
+                            <input type="date" value={filters.reportR1DateTo} onChange={(e) => setFilters({ ...filters, reportR1DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportR1IssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportR1IssuedMonthsAgo: val })}
+                              label="R1 Issued More Than"
                             />
-                            Warrant Received but Not Executed
-                          </label>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Warrant Issued (Months Ago)</label>
-                          <select value={filters.warrantIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, warrantIssuedMonthsAgo: e.target.value as "" | "3" | "6" | "9" | "12" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                            <option value="">Any</option>
-                            <option value="3">3 months</option>
-                            <option value="6">6 months</option>
-                            <option value="9">9 months</option>
-                            <option value="12">12 months</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
-                          <input type="date" value={filters.warrantPrayerDateFrom} onChange={(e) => setFilters({ ...filters, warrantPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
-                          <input type="date" value={filters.warrantPrayerDateTo} onChange={(e) => setFilters({ ...filters, warrantPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
-                          <input type="date" value={filters.warrantReceiptDateFrom} onChange={(e) => setFilters({ ...filters, warrantReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
-                          <input type="date" value={filters.warrantReceiptDateTo} onChange={(e) => setFilters({ ...filters, warrantReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
-                          <input type="date" value={filters.warrantExecutionDateFrom} onChange={(e) => setFilters({ ...filters, warrantExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
-                          <input type="date" value={filters.warrantExecutionDateTo} onChange={(e) => setFilters({ ...filters, warrantExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                          </div>
 
-                  {/* Proclamation */}
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Proclamation</h4>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Prayed</label>
-                          <select value={filters.proclamationPrayed} onChange={(e) => setFilters({ ...filters, proclamationPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                            <option value="">All</option>
-                            <option value="Yes">Yes</option>
-                            <option value="No">No</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center">
-                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.proclamationReceivedButNotExecuted}
-                              onChange={(e) => setFilters({ ...filters, proclamationReceivedButNotExecuted: e.target.checked })}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            Proclamation Received but Not Executed
-                          </label>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Proclamation Issued (Months Ago)</label>
-                          <select value={filters.proclamationIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, proclamationIssuedMonthsAgo: e.target.value as "" | "3" | "6" | "9" | "12" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                            <option value="">Any</option>
-                            <option value="3">3 months</option>
-                            <option value="6">6 months</option>
-                            <option value="9">9 months</option>
-                            <option value="12">12 months</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
-                          <input type="date" value={filters.proclamationPrayerDateFrom} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
-                          <input type="date" value={filters.proclamationPrayerDateTo} onChange={(e) => setFilters({ ...filters, proclamationPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
-                          <input type="date" value={filters.proclamationReceiptDateFrom} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
-                          <input type="date" value={filters.proclamationReceiptDateTo} onChange={(e) => setFilters({ ...filters, proclamationReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
-                          <input type="date" value={filters.proclamationExecutionDateFrom} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
-                          <input type="date" value={filters.proclamationExecutionDateTo} onChange={(e) => setFilters({ ...filters, proclamationExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                          {/* Supervision Report */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervision Report</label>
+                            <select value={filters.reportSupervision} onChange={(e) => setFilters({ ...filters, reportSupervision: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervision Date From</label>
+                            <input type="date" value={filters.reportSupervisionDateFrom} onChange={(e) => setFilters({ ...filters, reportSupervisionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervision Date To</label>
+                            <input type="date" value={filters.reportSupervisionDateTo} onChange={(e) => setFilters({ ...filters, reportSupervisionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
 
-                  {/* Attachment */}
-                  <div>
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Attachment</h4>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Prayed</label>
-                          <select value={filters.attachmentPrayed} onChange={(e) => setFilters({ ...filters, attachmentPrayed: e.target.value as "" | "Yes" | "No" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                            <option value="">All</option>
-                            <option value="Yes">Yes</option>
-                            <option value="No">No</option>
-                          </select>
-                        </div>
-                        <div className="flex items-center">
-                          <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={filters.attachmentReceivedButNotExecuted}
-                              onChange={(e) => setFilters({ ...filters, attachmentReceivedButNotExecuted: e.target.checked })}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          {/* R2 Report */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Report</label>
+                            <select value={filters.reportR2} onChange={(e) => setFilters({ ...filters, reportR2: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Date From</label>
+                            <input type="date" value={filters.reportR2DateFrom} onChange={(e) => setFilters({ ...filters, reportR2DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Date To</label>
+                            <input type="date" value={filters.reportR2DateTo} onChange={(e) => setFilters({ ...filters, reportR2DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportR2IssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportR2IssuedMonthsAgo: val })}
+                              label="R2 Issued More Than"
                             />
-                            Attachment Received but Not Executed
-                          </label>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">Attachment Issued (Months Ago)</label>
-                          <select value={filters.attachmentIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, attachmentIssuedMonthsAgo: e.target.value as "" | "3" | "6" | "9" | "12" })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                            <option value="">Any</option>
-                            <option value="3">3 months</option>
-                            <option value="6">6 months</option>
-                            <option value="9">9 months</option>
-                            <option value="12">12 months</option>
-                          </select>
+                          </div>
+
+                          {/* R3 Report */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Report</label>
+                            <select value={filters.reportR3} onChange={(e) => setFilters({ ...filters, reportR3: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Date From</label>
+                            <input type="date" value={filters.reportR3DateFrom} onChange={(e) => setFilters({ ...filters, reportR3DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Date To</label>
+                            <input type="date" value={filters.reportR3DateTo} onChange={(e) => setFilters({ ...filters, reportR3DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportR3IssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportR3IssuedMonthsAgo: val })}
+                              label="R3 Issued More Than"
+                            />
+                          </div>
+
+                          {/* PR1 Report (issued by DSP) */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Report (DSP)</label>
+                            <select value={filters.reportPR1} onChange={(e) => setFilters({ ...filters, reportPR1: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Date From</label>
+                            <input type="date" value={filters.reportPR1DateFrom} onChange={(e) => setFilters({ ...filters, reportPR1DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Date To</label>
+                            <input type="date" value={filters.reportPR1DateTo} onChange={(e) => setFilters({ ...filters, reportPR1DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportPR1IssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportPR1IssuedMonthsAgo: val })}
+                              label="PR1 Issued More Than"
+                            />
+                          </div>
+
+                          {/* PR2 Report (issued by DSP) */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Report (DSP)</label>
+                            <select value={filters.reportPR2} onChange={(e) => setFilters({ ...filters, reportPR2: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Date From</label>
+                            <input type="date" value={filters.reportPR2DateFrom} onChange={(e) => setFilters({ ...filters, reportPR2DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Date To</label>
+                            <input type="date" value={filters.reportPR2DateTo} onChange={(e) => setFilters({ ...filters, reportPR2DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportPR2IssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportPR2IssuedMonthsAgo: val })}
+                              label="PR2 Issued More Than"
+                            />
+                          </div>
+
+                          {/* PR3 Report (issued by DSP) */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Report (DSP)</label>
+                            <select value={filters.reportPR3} onChange={(e) => setFilters({ ...filters, reportPR3: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Date From</label>
+                            <input type="date" value={filters.reportPR3DateFrom} onChange={(e) => setFilters({ ...filters, reportPR3DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Date To</label>
+                            <input type="date" value={filters.reportPR3DateTo} onChange={(e) => setFilters({ ...filters, reportPR3DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportPR3IssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportPR3IssuedMonthsAgo: val })}
+                              label="PR3 Issued More Than"
+                            />
+                          </div>
+
+                          {/* FPR Report */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Report</label>
+                            <select value={filters.reportFPR} onChange={(e) => setFilters({ ...filters, reportFPR: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Date From</label>
+                            <input type="date" value={filters.reportFPRDateFrom} onChange={(e) => setFilters({ ...filters, reportFPRDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Date To</label>
+                            <input type="date" value={filters.reportFPRDateTo} onChange={(e) => setFilters({ ...filters, reportFPRDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportFPRIssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportFPRIssuedMonthsAgo: val })}
+                              label="FPR Issued More Than"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Without Charge Sheet</label>
+                            <label className="inline-flex items-center gap-2 text-sm pt-2">
+                              <input
+                                type="checkbox"
+                                checked={filters.reportFPRWithoutChargesheet}
+                                onChange={(e) => setFilters({ ...filters, reportFPRWithoutChargesheet: e.target.checked })}
+                              />
+                              FPR issued but charge sheet not submitted
+                            </label>
+                          </div>
+
+                          {/* Final Order */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Order</label>
+                            <select value={filters.reportFinalOrder} onChange={(e) => setFilters({ ...filters, reportFinalOrder: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Order Date From</label>
+                            <input type="date" value={filters.reportFinalOrderDateFrom} onChange={(e) => setFilters({ ...filters, reportFinalOrderDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Order Date To</label>
+                            <input type="date" value={filters.reportFinalOrderDateTo} onChange={(e) => setFilters({ ...filters, reportFinalOrderDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportFinalOrderIssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportFinalOrderIssuedMonthsAgo: val })}
+                              label="Final Order Issued More Than"
+                            />
+                          </div>
+
+                          {/* Final Chargesheet */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Chargesheet</label>
+                            <select value={filters.reportFinalChargesheet} onChange={(e) => setFilters({ ...filters, reportFinalChargesheet: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Chargesheet Date From</label>
+                            <input type="date" value={filters.reportFinalChargesheetDateFrom} onChange={(e) => setFilters({ ...filters, reportFinalChargesheetDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Chargesheet Date To</label>
+                            <input type="date" value={filters.reportFinalChargesheetDateTo} onChange={(e) => setFilters({ ...filters, reportFinalChargesheetDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <TimeAgoFilter
+                              value={filters.reportFinalChargesheetIssuedMonthsAgo}
+                              onChange={(val) => setFilters({ ...filters, reportFinalChargesheetIssuedMonthsAgo: val })}
+                              label="Final Chargesheet Issued More Than"
+                            />
+                          </div>
+
+                          {/* Chargesheet submitted in Court */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Chargesheet submitted in Court</label>
+                            <select value={filters.finalChargesheetSubmitted} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmitted: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
+                              <option value="">All</option>
+                              <option value="Yes">Yes</option>
+                              <option value="No">No</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Submission Date From</label>
+                            <input type="date" value={filters.finalChargesheetSubmissionDateFrom} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmissionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Submission Date To</label>
+                            <input type="date" value={filters.finalChargesheetSubmissionDateTo} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmissionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                          </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date From</label>
-                          <input type="date" value={filters.attachmentPrayerDateFrom} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Prayer Date To</label>
-                          <input type="date" value={filters.attachmentPrayerDateTo} onChange={(e) => setFilters({ ...filters, attachmentPrayerDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date From</label>
-                          <input type="date" value={filters.attachmentReceiptDateFrom} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Receipt Date To</label>
-                          <input type="date" value={filters.attachmentReceiptDateTo} onChange={(e) => setFilters({ ...filters, attachmentReceiptDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date From</label>
-                          <input type="date" value={filters.attachmentExecutionDateFrom} onChange={(e) => setFilters({ ...filters, attachmentExecutionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1.5">Execution Date To</label>
-                          <input type="date" value={filters.attachmentExecutionDateTo} onChange={(e) => setFilters({ ...filters, attachmentExecutionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm" />
-                    </div>
-                  </div>
-                </div>
+                    )}
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Advanced Filters Toggle */}
-            <div className="flex items-center justify-between py-2">
-              <div className="flex-1 border-t border-slate-200"></div>
-              <button
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="mx-4 px-4 py-2 text-sm font-medium text-blue-700 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {showAdvancedFilters ? (
-                  <>
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15" /></svg>
-                    Hide Advanced Filters
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
-                    Show Advanced Filters
-                  </>
-                )}
-              </button>
-              <div className="flex-1 border-t border-slate-200"></div>
-            </div>
-
-            {/* Advanced Filters */}
-            {showAdvancedFilters && (
-              <div className="space-y-6">
-                {/* Date Filters */}
-                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection('dates')}
-                    className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
-                  >
-                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                      <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                        <line x1="16" y1="2" x2="16" y2="6" />
-                        <line x1="8" y1="2" x2="8" y2="6" />
-                        <line x1="3" y1="10" x2="21" y2="10" />
-                      </svg>
-                      Date Filters
-                    </h3>
-                    <svg 
-                      className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.dates ? 'rotate-180' : ''}`}
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2"
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
-                  {expandedSections.dates && (
-                    <div className="px-5 pb-5">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date From</label>
-                      <input type="date" value={filters.caseDateFrom} onChange={(e) => setFilters({ ...filters, caseDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date To</label>
-                      <input type="date" value={filters.caseDateTo} onChange={(e) => setFilters({ ...filters, caseDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrest Date From</label>
-                      <input type="date" value={filters.arrestDateFrom} onChange={(e) => setFilters({ ...filters, arrestDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrest Date To</label>
-                      <input type="date" value={filters.arrestDateTo} onChange={(e) => setFilters({ ...filters, arrestDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                  </div>
+              {/* Actions */}
+              <div className="mt-6 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span>Showing</span>
+                  <select value={filters.pageSize} onChange={(e) => setFilters({ ...filters, pageSize: Number(e.target.value) as 10 | 25 | 50 })} className="rounded-md border-slate-300">
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>per page</span>
                 </div>
-              )}
-            </div>
-
-                {/* Report Filters */}
-                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection('reports')}
-                    className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
-                  >
-                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                      <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                      </svg>
-                      Report Filters
-                    </h3>
-                    <svg 
-                      className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.reports ? 'rotate-180' : ''}`}
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2"
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                <div className="flex gap-3">
+                  <button onClick={() => {/* no-op demo search */ }} className="inline-flex items-center gap-2 rounded-md bg-blue-800 px-4 py-2 text-white font-medium shadow-sm hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                    Search
                   </button>
-                  {expandedSections.reports && (
-                    <div className="px-5 pb-5">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {/* R1 Report */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Report</label>
-                      <select value={filters.reportR1} onChange={(e) => setFilters({ ...filters, reportR1: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Date From</label>
-                      <input type="date" value={filters.reportR1DateFrom} onChange={(e) => setFilters({ ...filters, reportR1DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Date To</label>
-                      <input type="date" value={filters.reportR1DateTo} onChange={(e) => setFilters({ ...filters, reportR1DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Issued More Than (Months)</label>
-                      <select value={filters.reportR1IssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportR1IssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-                    
-                    {/* Supervision Report */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervision Report</label>
-                      <select value={filters.reportSupervision} onChange={(e) => setFilters({ ...filters, reportSupervision: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervision Date From</label>
-                      <input type="date" value={filters.reportSupervisionDateFrom} onChange={(e) => setFilters({ ...filters, reportSupervisionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervision Date To</label>
-                      <input type="date" value={filters.reportSupervisionDateTo} onChange={(e) => setFilters({ ...filters, reportSupervisionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-
-                    {/* R2 Report */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Report</label>
-                      <select value={filters.reportR2} onChange={(e) => setFilters({ ...filters, reportR2: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Date From</label>
-                      <input type="date" value={filters.reportR2DateFrom} onChange={(e) => setFilters({ ...filters, reportR2DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Date To</label>
-                      <input type="date" value={filters.reportR2DateTo} onChange={(e) => setFilters({ ...filters, reportR2DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Issued More Than (Months)</label>
-                      <select value={filters.reportR2IssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportR2IssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-
-                    {/* R3 Report */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Report</label>
-                      <select value={filters.reportR3} onChange={(e) => setFilters({ ...filters, reportR3: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Date From</label>
-                      <input type="date" value={filters.reportR3DateFrom} onChange={(e) => setFilters({ ...filters, reportR3DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Date To</label>
-                      <input type="date" value={filters.reportR3DateTo} onChange={(e) => setFilters({ ...filters, reportR3DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Issued More Than (Months)</label>
-                      <select value={filters.reportR3IssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportR3IssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-
-                    {/* PR1 Report (issued by DSP) */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Report (DSP)</label>
-                      <select value={filters.reportPR1} onChange={(e) => setFilters({ ...filters, reportPR1: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Date From</label>
-                      <input type="date" value={filters.reportPR1DateFrom} onChange={(e) => setFilters({ ...filters, reportPR1DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Date To</label>
-                      <input type="date" value={filters.reportPR1DateTo} onChange={(e) => setFilters({ ...filters, reportPR1DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Issued More Than (Months)</label>
-                      <select value={filters.reportPR1IssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportPR1IssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-
-                    {/* PR2 Report (issued by DSP) */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Report (DSP)</label>
-                      <select value={filters.reportPR2} onChange={(e) => setFilters({ ...filters, reportPR2: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Date From</label>
-                      <input type="date" value={filters.reportPR2DateFrom} onChange={(e) => setFilters({ ...filters, reportPR2DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Date To</label>
-                      <input type="date" value={filters.reportPR2DateTo} onChange={(e) => setFilters({ ...filters, reportPR2DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Issued More Than (Months)</label>
-                      <select value={filters.reportPR2IssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportPR2IssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-
-                    {/* PR3 Report (issued by DSP) */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Report (DSP)</label>
-                      <select value={filters.reportPR3} onChange={(e) => setFilters({ ...filters, reportPR3: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Date From</label>
-                      <input type="date" value={filters.reportPR3DateFrom} onChange={(e) => setFilters({ ...filters, reportPR3DateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Date To</label>
-                      <input type="date" value={filters.reportPR3DateTo} onChange={(e) => setFilters({ ...filters, reportPR3DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Issued More Than (Months)</label>
-                      <select value={filters.reportPR3IssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportPR3IssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-
-                    {/* FPR Report */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Report</label>
-                      <select value={filters.reportFPR} onChange={(e) => setFilters({ ...filters, reportFPR: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Date From</label>
-                      <input type="date" value={filters.reportFPRDateFrom} onChange={(e) => setFilters({ ...filters, reportFPRDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Date To</label>
-                      <input type="date" value={filters.reportFPRDateTo} onChange={(e) => setFilters({ ...filters, reportFPRDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Issued More Than (Months)</label>
-                      <select value={filters.reportFPRIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportFPRIssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">FPR Without Charge Sheet</label>
-                      <label className="inline-flex items-center gap-2 text-sm pt-2">
-                        <input
-                          type="checkbox"
-                          checked={filters.reportFPRWithoutChargesheet}
-                          onChange={(e) => setFilters({ ...filters, reportFPRWithoutChargesheet: e.target.checked })}
-                        />
-                        FPR issued but charge sheet not submitted
-                      </label>
-                    </div>
-
-                    {/* Final Order */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Order</label>
-                      <select value={filters.reportFinalOrder} onChange={(e) => setFilters({ ...filters, reportFinalOrder: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Order Date From</label>
-                      <input type="date" value={filters.reportFinalOrderDateFrom} onChange={(e) => setFilters({ ...filters, reportFinalOrderDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Order Date To</label>
-                      <input type="date" value={filters.reportFinalOrderDateTo} onChange={(e) => setFilters({ ...filters, reportFinalOrderDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Order Issued More Than (Months)</label>
-                      <select value={filters.reportFinalOrderIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportFinalOrderIssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-
-                    {/* Final Chargesheet */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Chargesheet</label>
-                      <select value={filters.reportFinalChargesheet} onChange={(e) => setFilters({ ...filters, reportFinalChargesheet: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Chargesheet Date From</label>
-                      <input type="date" value={filters.reportFinalChargesheetDateFrom} onChange={(e) => setFilters({ ...filters, reportFinalChargesheetDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Chargesheet Date To</label>
-                      <input type="date" value={filters.reportFinalChargesheetDateTo} onChange={(e) => setFilters({ ...filters, reportFinalChargesheetDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Final Chargesheet Issued More Than (Months)</label>
-                      <select value={filters.reportFinalChargesheetIssuedMonthsAgo} onChange={(e) => setFilters({ ...filters, reportFinalChargesheetIssuedMonthsAgo: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">Any</option>
-                        <option value="3">More than 3 months</option>
-                        <option value="6">More than 6 months</option>
-                      </select>
-                    </div>
-
-                    {/* Chargesheet submitted in Court */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Chargesheet submitted in Court</label>
-                      <select value={filters.finalChargesheetSubmitted} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmitted: e.target.value as any })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                        <option value="">All</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Submission Date From</label>
-                      <input type="date" value={filters.finalChargesheetSubmissionDateFrom} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmissionDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Submission Date To</label>
-                      <input type="date" value={filters.finalChargesheetSubmissionDateTo} onChange={(e) => setFilters({ ...filters, finalChargesheetSubmissionDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                    </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            )}
-
-            {/* Actions */}
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span>Showing</span>
-                <select value={filters.pageSize} onChange={(e) => setFilters({ ...filters, pageSize: Number(e.target.value) as 10 | 25 | 50 })} className="rounded-md border-slate-300">
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-                <span>per page</span>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => {/* no-op demo search */}} className="inline-flex items-center gap-2 rounded-md bg-blue-800 px-4 py-2 text-white font-medium shadow-sm hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700">
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                  Search
-                </button>
-                <button onClick={reset} className="rounded-md px-4 py-2 font-medium text-slate-700 border border-slate-300 hover:bg-slate-50">
-                  Reset
-                </button>
+                  <button onClick={reset} className="rounded-md px-4 py-2 font-medium text-slate-700 border border-slate-300 hover:bg-slate-50">
+                    Reset
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Results Table */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm ring-1 ring-slate-200 overflow-hidden">
-          {dataLoading ? (
-            <div className="p-8 text-center">
-              <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-slate-600">Loading cases...</p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-blue-50 text-slate-800">
-                    <tr className="*:\:px-4 *:\:py-3">
-                      <th className="px-4 py-3 text-left font-medium">Case No.</th>
-                      <th className="px-4 py-3 text-left font-medium">Year</th>
-                      <th className="px-4 py-3 text-left font-medium">Police Station</th>
-                      <th className="px-4 py-3 text-left font-medium">Crime Section</th>
-                      <th className="px-4 py-3 text-left font-medium">Punishment</th>
-                      <th className="px-4 py-3 text-left font-medium">Accused</th>
-                      <th className="px-4 py-3 text-left font-medium">Case Status</th>
-                      <th className="px-4 py-3 text-left font-medium">Case Decision Status</th>
-                      <th className="px-4 py-3 text-right font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {filtered.slice(0, filters.pageSize).map((row) => {
-                      const total = row.accused.length;
-                      const arrested = row.accused.filter((a) => a.status === "Arrested").length;
-                      const unarrested = row.accused.filter((a) => a.status === "Not arrested").length;
-                      const matchedAccused = row.matchedAccused || [];
+          {/* Results Table */}
+          <div className="mt-6 bg-white rounded-lg shadow-sm ring-1 ring-slate-200 overflow-hidden">
+            {dataLoading ? (
+              <div className="p-8 text-center">
+                <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <p className="text-slate-600">Loading cases...</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-blue-50 text-slate-800">
+                      <tr className="*:\:px-4 *:\:py-3">
+                        <th className="px-4 py-3 text-left font-medium">Case No.</th>
+                        <th className="px-4 py-3 text-left font-medium">Year</th>
+                        <th className="px-4 py-3 text-left font-medium">Police Station</th>
+                        <th className="px-4 py-3 text-left font-medium">Crime Section</th>
+                        <th className="px-4 py-3 text-left font-medium">Punishment</th>
+                        <th className="px-4 py-3 text-left font-medium">Accused</th>
+                        <th className="px-4 py-3 text-left font-medium">Case Status / Accused Status</th>
+                        <th className="px-4 py-3 text-left font-medium">Case Decision Status</th>
+                        <th className="px-4 py-3 text-right font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {filtered.slice((currentPage - 1) * filters.pageSize, currentPage * filters.pageSize).map((row) => {
+                        const total = row.accused.length;
+                        const arrested = row.accused.filter((a) => a.status === "Arrested").length;
+                        const unarrested = row.accused.filter((a) => a.status === "Not arrested").length;
+                        const matchedAccused = row.matchedAccused || [];
 
-                      return (
-                        <>
-                          <tr key={row.caseNo} className="hover:bg-slate-50 odd:bg-white even:bg-slate-50/50">
-                            <td className="px-4 py-3 whitespace-nowrap">{row.caseNo}</td>
-                            <td className="px-4 py-3">{row.year}</td>
-                            <td className="px-4 py-3">{row.policeStation}</td>
-                            <td className="px-4 py-3">{row.crimeSection}</td>
-                            <td className="px-4 py-3">{row.punishmentCategory}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-medium text-slate-900">{total}</span>
-                                <span className="text-slate-400">/</span>
-                                <span className="text-red-600 font-medium">{arrested}</span>
-                                <span className="text-slate-400">/</span>
-                                <span className="text-green-600 font-medium">{unarrested}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeColor(row.caseStatus)}`}>
-                                {row.caseStatus}
-                              </span>
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${decisionPendingBadgeColor(row.decisionPendingStatus)}`}
-                                >
-                                  {row.decisionPendingStatus}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              {row.caseDecisionStatus ? (
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-                                  row.caseDecisionStatus === "True" ? "bg-green-100 text-green-800 ring-green-600/20" :
-                                  row.caseDecisionStatus === "False" ? "bg-red-100 text-red-800 ring-red-600/20" :
-                                  row.caseDecisionStatus === "Partial Pendency" ? "bg-yellow-100 text-yellow-800 ring-yellow-600/20" :
-                                  row.caseDecisionStatus === "Complete Pendency" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
-                                  "bg-slate-100 text-slate-800 ring-slate-600/20"
-                                }`}>
-                                  {row.caseDecisionStatus}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 text-xs">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <Link
-                                href={`/cases/${row.caseNo.replaceAll("/", "-")}`}
-                                title="Open detailed case timeline"
-                                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
-                              >
-                                View Case
-                              </Link>
-                            </td>
-                          </tr>
-                          {matchedAccused.length > 0 && (
-                            <tr key={`${row.caseNo}-matched`} className="bg-blue-50/30">
-                              <td colSpan={8} className="px-4 py-2">
-                                <div className="text-xs text-slate-600">
-                                  <span className="font-medium">Matched Accused:</span>{" "}
-                                  {matchedAccused.map((acc, idx) => (
-                                    <span key={idx}>
-                                      <span className="font-medium">{acc.name}</span>
-                                      <span className="text-slate-500"> ({acc.status})</span>
-                                      {idx < matchedAccused.length - 1 && ", "}
-                                    </span>
-                                  ))}
+                        return (
+                          <>
+                            <tr key={row.caseNo} className="hover:bg-slate-50 odd:bg-white even:bg-slate-50/50">
+                              <td className="px-4 py-3 whitespace-nowrap">{row.caseNo}</td>
+                              <td className="px-4 py-3">{row.year}</td>
+                              <td className="px-4 py-3">{row.policeStation}</td>
+                              <td className="px-4 py-3">{row.crimeSection}</td>
+                              <td className="px-4 py-3">{row.punishmentCategory}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-medium text-slate-900">{total}</span>
+                                  <span className="text-slate-400">/</span>
+                                  <span className="text-red-600 font-medium">{arrested}</span>
+                                  <span className="text-slate-400">/</span>
+                                  <span className="text-green-600 font-medium">{unarrested}</span>
                                 </div>
                               </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeColor(row.caseStatus)}`}>
+                                    {row.caseStatus}
+                                  </span>
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${decisionPendingBadgeColor(row.decisionPendingStatus)}`}
+                                  >
+                                    {row.decisionPendingStatus}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                {row.caseDecisionStatus ? (
+                                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${row.caseDecisionStatus === "True" ? "bg-green-100 text-green-800 ring-green-600/20" :
+                                    row.caseDecisionStatus === "False" ? "bg-red-100 text-red-800 ring-red-600/20" :
+                                      row.caseDecisionStatus === "Partial Pendency" ? "bg-yellow-100 text-yellow-800 ring-yellow-600/20" :
+                                        row.caseDecisionStatus === "Complete Pendency" ? "bg-orange-100 text-orange-800 ring-orange-600/20" :
+                                          "bg-slate-100 text-slate-800 ring-slate-600/20"
+                                    }`}>
+                                    {row.caseDecisionStatus}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 text-xs">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <Link
+                                  href={`/cases/${row.caseNo.replaceAll("/", "-")}`}
+                                  title="Open detailed case timeline"
+                                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
+                                >
+                                  View Case
+                                </Link>
+                              </td>
                             </tr>
-                          )}
-                        </>
+                            {matchedAccused.length > 0 && (
+                              <tr key={`${row.caseNo}-matched`} className="bg-blue-50/30">
+                                <td colSpan={8} className="px-4 py-2">
+                                  <div className="text-xs text-slate-600">
+                                    <span className="font-medium">Matched Accused:</span>{" "}
+                                    {matchedAccused.map((acc, idx) => (
+                                      <span key={idx}>
+                                        <span className="font-medium">{acc.name}</span>
+                                        <span className="text-slate-500"> ({acc.status})</span>
+                                        {idx < matchedAccused.length - 1 && ", "}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
+                      {filtered.length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-10 text-center text-slate-500">No results found. Adjust filters and try again.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-white text-sm">
+                  <div className="text-slate-600">
+                    Showing <span className="font-medium">{Math.min((currentPage - 1) * filters.pageSize + 1, filtered.length)}</span> to <span className="font-medium">{Math.min(currentPage * filters.pageSize, filtered.length)}</span> of <span className="font-medium">{filtered.length}</span> entries
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Prev
+                    </button>
+
+                    {Array.from({ length: Math.min(5, Math.ceil(filtered.length / filters.pageSize)) }, (_, i) => {
+                      // Logic to show a window of pages around current page
+                      const totalPages = Math.ceil(filtered.length / filters.pageSize);
+                      let startPage = Math.max(1, currentPage - 2);
+                      const endPage = Math.min(totalPages, startPage + 4);
+
+                      if (endPage - startPage < 4) {
+                        startPage = Math.max(1, endPage - 4);
+                      }
+
+                      const pageNum = startPage + i;
+                      if (pageNum > totalPages) return null;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1.5 border rounded-md ${currentPage === pageNum
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
                       );
                     })}
-                    {filtered.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center text-slate-500">No results found. Adjust filters and try again.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-white text-sm">
-                <div className="text-slate-600">Showing <span className="font-medium">{Math.min(filters.pageSize, filtered.length)}</span> of <span className="font-medium">{filtered.length}</span> entries</div>
-                <div className="flex items-center gap-1">
-                  <button className="px-3 py-1.5 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50">Prev</button>
-                  <button className="px-3 py-1.5 border border-slate-300 rounded-md bg-blue-600 text-white hover:bg-blue-700">1</button>
-                  <button className="px-3 py-1.5 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50">2</button>
-                  <button className="px-3 py-1.5 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50">Next</button>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(filtered.length / filters.pageSize), p + 1))}
+                      disabled={currentPage >= Math.ceil(filtered.length / filters.pageSize)}
+                      className="px-3 py-1.5 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </main>
+
+        {/* Add Reason Modal */}
+        {showAddReasonModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="px-6 py-4 border-b border-slate-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-slate-900">Add New Reason for Pendency</h3>
+                  <button
+                    onClick={() => {
+                      setShowAddReasonModal(false);
+                      setNewReasonInput("");
+                    }}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </main>
-
-      {/* Add Reason Modal */}
-      {showAddReasonModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b border-slate-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">Add New Reason for Pendency</h3>
-                <button
-                  onClick={() => {
-                    setShowAddReasonModal(false);
-                    setNewReasonInput("");
-                  }}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div className="px-6 py-4">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Reason Name</label>
-                <input
-                  type="text"
-                  value={newReasonInput}
-                  onChange={(e) => setNewReasonInput(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                  placeholder="Enter reason for pendency"
-                  onKeyDown={async (e) => {
-                    if (e.key === "Enter" && newReasonInput.trim() && !reasonForPendencyOptions.includes(newReasonInput.trim())) {
-                      try {
-                        const response = await fetch('/api/reason-for-pendency', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ reason: newReasonInput.trim(), createdBy: 'Admin' }),
-                        });
-                        const data = await response.json();
-                        if (data.success) {
-                      setReasonForPendencyOptions([...reasonForPendencyOptions, newReasonInput.trim()]);
-                      setNewReasonInput("");
-                      setShowAddReasonModal(false);
-                        } else {
-                          alert(data.error || 'Failed to add reason');
+              <div className="px-6 py-4">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Reason Name</label>
+                  <input
+                    type="text"
+                    value={newReasonInput}
+                    onChange={(e) => setNewReasonInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                    placeholder="Enter reason for pendency"
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter" && newReasonInput.trim() && !reasonForPendencyOptions.includes(newReasonInput.trim())) {
+                        try {
+                          const response = await fetch('/api/reason-for-pendency', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason: newReasonInput.trim(), createdBy: 'Admin' }),
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            setReasonForPendencyOptions([...reasonForPendencyOptions, newReasonInput.trim()]);
+                            setNewReasonInput("");
+                            setShowAddReasonModal(false);
+                          } else {
+                            alert(data.error || 'Failed to add reason');
+                          }
+                        } catch (error: any) {
+                          alert(error.message || 'An error occurred');
                         }
-                      } catch (error: any) {
-                        alert(error.message || 'An error occurred');
                       }
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => {
-                    setShowAddReasonModal(false);
-                    setNewReasonInput("");
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-md hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    if (newReasonInput.trim() && !reasonForPendencyOptions.includes(newReasonInput.trim())) {
-                      try {
-                        const response = await fetch('/api/reason-for-pendency', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ reason: newReasonInput.trim(), createdBy: 'Admin' }),
-                        });
-                        const data = await response.json();
-                        if (data.success) {
-                      setReasonForPendencyOptions([...reasonForPendencyOptions, newReasonInput.trim()]);
-                      setNewReasonInput("");
+                    }}
+                  />
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => {
                       setShowAddReasonModal(false);
-                        } else {
-                          alert(data.error || 'Failed to add reason');
+                      setNewReasonInput("");
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-md hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (newReasonInput.trim() && !reasonForPendencyOptions.includes(newReasonInput.trim())) {
+                        try {
+                          const response = await fetch('/api/reason-for-pendency', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason: newReasonInput.trim(), createdBy: 'Admin' }),
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            setReasonForPendencyOptions([...reasonForPendencyOptions, newReasonInput.trim()]);
+                            setNewReasonInput("");
+                            setShowAddReasonModal(false);
+                          } else {
+                            alert(data.error || 'Failed to add reason');
+                          }
+                        } catch (error: any) {
+                          alert(error.message || 'An error occurred');
                         }
-                      } catch (error: any) {
-                        alert(error.message || 'An error occurred');
                       }
-                    }
-                  }}
-                  disabled={!newReasonInput.trim() || reasonForPendencyOptions.includes(newReasonInput.trim())}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-800 rounded-md hover:bg-blue-900 disabled:bg-slate-300 disabled:cursor-not-allowed"
-                >
-                  Add Reason
-                </button>
+                    }}
+                    disabled={!newReasonInput.trim() || reasonForPendencyOptions.includes(newReasonInput.trim())}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-800 rounded-md hover:bg-blue-900 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  >
+                    Add Reason
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </AuthGuard>
   );
 }
