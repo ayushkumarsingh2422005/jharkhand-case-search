@@ -65,6 +65,11 @@ type ReportItem = {
   };
 };
 
+type Diary = {
+  diaryNo?: string;
+  diaryDate?: string;
+};
+
 type ReportInfo = {
   r1?: string;
   supervision?: string;
@@ -98,6 +103,7 @@ type CaseRow = {
   reports?: ReportInfo;
   finalChargesheetSubmitted?: boolean;
   finalChargesheetSubmissionDate?: string;
+  diary?: Diary[];
 };
 
 const POLICE_STATIONS = [
@@ -372,6 +378,7 @@ export default function Home() {
     accused: false,
     dates: false,
     reports: false,
+    diary: false,
   });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -503,6 +510,10 @@ export default function Home() {
     finalChargesheetSubmitted: "" as "" | "Yes" | "No",
     finalChargesheetSubmissionDateFrom: "",
     finalChargesheetSubmissionDateTo: "",
+    // Diary filters
+    diaryNo: "",
+    diaryDateFrom: "",
+    diaryDateTo: "",
     pageSize: 10 as 10 | 25 | 50,
   });
 
@@ -582,6 +593,7 @@ export default function Home() {
             reports: item.reports,
             finalChargesheetSubmitted: item.finalChargesheetSubmitted || false,
             finalChargesheetSubmissionDate: item.finalChargesheetSubmissionDate,
+            diary: item.diary || [],
           };
         });
         setData(transformedData);
@@ -1550,6 +1562,27 @@ export default function Home() {
         if (filters.finalChargesheetSubmissionDateFrom && (!row.finalChargesheetSubmissionDate || new Date(row.finalChargesheetSubmissionDate) < new Date(filters.finalChargesheetSubmissionDateFrom))) return null;
         if (filters.finalChargesheetSubmissionDateTo && (!row.finalChargesheetSubmissionDate || new Date(row.finalChargesheetSubmissionDate) > new Date(filters.finalChargesheetSubmissionDateTo))) return null;
 
+        // Diary filters
+        if (filters.diaryNo || filters.diaryDateFrom || filters.diaryDateTo) {
+          const diaryEntries = row.diary || [];
+          const hasMatchingDiary = diaryEntries.some(entry => {
+            let match = true;
+            if (filters.diaryNo && !entry.diaryNo?.toLowerCase().includes(filters.diaryNo.toLowerCase())) match = false;
+
+            if (filters.diaryDateFrom || filters.diaryDateTo) {
+              if (!entry.diaryDate) {
+                match = false;
+              } else {
+                const dDate = new Date(entry.diaryDate);
+                if (filters.diaryDateFrom && dDate < new Date(filters.diaryDateFrom)) match = false;
+                if (filters.diaryDateTo && dDate > new Date(filters.diaryDateTo)) match = false;
+              }
+            }
+            return match;
+          });
+          if (!hasMatchingDiary) return null;
+        }
+
         return { ...row, matchedAccused };
       })
       .filter((row): row is CaseRow & { matchedAccused: Accused[] } => row !== null);
@@ -1670,6 +1703,10 @@ export default function Home() {
       finalChargesheetSubmitted: "",
       finalChargesheetSubmissionDateFrom: "",
       finalChargesheetSubmissionDateTo: "",
+      // Diary filters
+      diaryNo: "",
+      diaryDateFrom: "",
+      diaryDateTo: "",
       pageSize: 10,
     });
   }
@@ -2499,6 +2536,70 @@ export default function Home() {
               {/* Advanced Filters */}
               {showAdvancedFilters && (
                 <div className="space-y-6">
+                  {/* Date Filters */}
+                  {/* Case Diary Section */}
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection('diary')}
+                      className="w-full p-5 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                          <polyline points="10 9 9 9 8 9" />
+                        </svg>
+                        Case Diary
+                      </h3>
+                      <svg
+                        className={`h-5 w-5 text-slate-600 transition-transform ${expandedSections.diary ? 'rotate-180' : ''}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {expandedSections.diary && (
+                      <div className="px-5 pb-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Diary Number</label>
+                            <input
+                              type="text"
+                              value={filters.diaryNo}
+                              onChange={(e) => setFilters({ ...filters, diaryNo: e.target.value })}
+                              placeholder="Enter diary number"
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Diary Date From</label>
+                            <input
+                              type="date"
+                              value={filters.diaryDateFrom}
+                              onChange={(e) => setFilters({ ...filters, diaryDateFrom: e.target.value })}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Diary Date To</label>
+                            <input
+                              type="date"
+                              value={filters.diaryDateTo}
+                              onChange={(e) => setFilters({ ...filters, diaryDateTo: e.target.value })}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Date Filters */}
                   <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
                     <button
