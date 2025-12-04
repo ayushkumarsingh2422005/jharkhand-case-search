@@ -45,7 +45,7 @@ const AccusedSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Arrested', 'Not arrested', 'Decision pending', 'Not Arrested', 'True', 'False', 'Decision Pending'],
+    enum: ['Arrested', 'Not arrested', 'Decision pending', 'Pending Verification', 'Not Arrested', 'True', 'False', 'Decision Pending'],
     required: true,
   },
   address: {
@@ -80,6 +80,19 @@ const AccusedSchema = new mongoose.Schema({
   },
   attachment: {
     type: LegalProcessSchema,
+  },
+  chargesheet: {
+    date: {
+      type: Date,
+    },
+    file: {
+      public_id: { type: String },
+      secure_url: { type: String },
+      url: { type: String },
+      original_filename: { type: String },
+      format: { type: String },
+      bytes: { type: Number },
+    },
   },
 }, { _id: true });
 
@@ -465,28 +478,28 @@ function computeDecisionPendingStatus(accused = [], legacyDecisionPending = fals
   return allPending ? 'Decision pending' : 'Partial';
 }
 
-CaseSchema.virtual('decisionPendingStatus').get(function() {
+CaseSchema.virtual('decisionPendingStatus').get(function () {
   const legacyDecisionPending = this.get('decisionPending');
   return computeDecisionPendingStatus(this.accused || [], legacyDecisionPending);
 });
 
 // Virtual for total accused count
-CaseSchema.virtual('totalAccused').get(function() {
+CaseSchema.virtual('totalAccused').get(function () {
   return this.accused ? this.accused.length : 0;
 });
 
 // Virtual for arrested count
-CaseSchema.virtual('arrestedCount').get(function() {
+CaseSchema.virtual('arrestedCount').get(function () {
   if (!this.accused) return 0;
-  return this.accused.filter(a => 
+  return this.accused.filter(a =>
     a.status === 'Arrested' || a.status === 'True'
   ).length;
 });
 
 // Virtual for unarrested count
-CaseSchema.virtual('unarrestedCount').get(function() {
+CaseSchema.virtual('unarrestedCount').get(function () {
   if (!this.accused) return 0;
-  return this.accused.filter(a => 
+  return this.accused.filter(a =>
     a.status === 'Not arrested' || a.status === 'Not Arrested' || a.status === 'False'
   ).length;
 });

@@ -3,7 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthGuard } from "../components/AuthGuard";
 import { useAuth } from "../contexts/AuthContext";
-import { deriveDecisionPendingStatus, DecisionPendingStatus } from "@/lib/decisionPending";
+
 import Image from "next/image";
 
 type CaseStatus = "Disposed" | "Under investigation";
@@ -88,13 +88,14 @@ type ReportInfo = {
 type CaseRow = {
   caseNo: string;
   year: number;
+  caseDate?: string;
   policeStation: string;
   crimeHead?: string;
   crimeSection: string;
   punishmentCategory: "\u22647 yrs" | ">7 yrs";
   accused: Accused[];
   caseStatus: CaseStatus;
-  decisionPendingStatus: DecisionPendingStatus;
+
   caseDecisionStatus?: string;
   investigationStatus?: InvestigationStatus;
   priority?: Priority;
@@ -104,6 +105,7 @@ type CaseRow = {
   finalChargesheetSubmitted?: boolean;
   finalChargesheetSubmissionDate?: string;
   diary?: Diary[];
+  chargesheetDeadlineType?: string;
 };
 
 const POLICE_STATIONS = [
@@ -131,11 +133,7 @@ const POLICE_STATIONS = [
   "Pathradda OP",
 ];
 
-const DECISION_PENDING_OPTIONS: DecisionPendingStatus[] = [
-  "Decision pending",
-  "Partial",
-  "Completed",
-];
+
 
 const INDIAN_STATES = [
   "Andhra Pradesh",
@@ -401,7 +399,7 @@ export default function Home() {
     section: "",
     punishment: [] as Array<"\u22647" | ">7">,
     caseStatus: [] as Array<CaseStatus>,
-    decisionPendingStatus: "" as "" | DecisionPendingStatus,
+
     caseDecisionStatus: "" as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency",
     investigationStatus: [] as Array<InvestigationStatus>,
     priority: [] as Array<Priority>,
@@ -470,30 +468,26 @@ export default function Home() {
     reportR1: "" as "" | "Yes" | "No",
     reportR1DateFrom: "",
     reportR1DateTo: "",
-    reportR1IssuedMonthsAgo: "",
+    reportRNotUpdatedDays: "",
     reportSupervision: "" as "" | "Yes" | "No",
     reportSupervisionDateFrom: "",
     reportSupervisionDateTo: "",
     reportR2: "" as "" | "Yes" | "No",
     reportR2DateFrom: "",
     reportR2DateTo: "",
-    reportR2IssuedMonthsAgo: "",
     reportR3: "" as "" | "Yes" | "No",
     reportR3DateFrom: "",
     reportR3DateTo: "",
-    reportR3IssuedMonthsAgo: "",
     reportPR1: "" as "" | "Yes" | "No",
     reportPR1DateFrom: "",
     reportPR1DateTo: "",
-    reportPR1IssuedMonthsAgo: "",
+    reportPRNotUpdatedDays: "",
     reportPR2: "" as "" | "Yes" | "No",
     reportPR2DateFrom: "",
     reportPR2DateTo: "",
-    reportPR2IssuedMonthsAgo: "",
     reportPR3: "" as "" | "Yes" | "No",
     reportPR3DateFrom: "",
     reportPR3DateTo: "",
-    reportPR3IssuedMonthsAgo: "",
     reportFPR: "" as "" | "Yes" | "No",
     reportFPRDateFrom: "",
     reportFPRDateTo: "",
@@ -514,6 +508,7 @@ export default function Home() {
     diaryNo: "",
     diaryDateFrom: "",
     diaryDateTo: "",
+    diaryNotUpdatedDays: "",
     pageSize: 10 as 10 | 25 | 50,
   });
 
@@ -563,28 +558,19 @@ export default function Home() {
         const transformedData: CaseRow[] = result.data.map((item: any) => {
           // Handle legacy data: if caseStatus is "Decision Pending", convert to decisionPending status
           let caseStatus: CaseStatus = item.caseStatus as CaseStatus;
-          const legacyDecisionPending =
-            item.decisionPending === true || item.caseStatus === "Decision Pending";
 
-          if (item.caseStatus === "Decision Pending") {
-            caseStatus = "Under investigation"; // Default to "Under investigation" for legacy data
-          }
-
-          const decisionPendingStatus = deriveDecisionPendingStatus(
-            item.accused || [],
-            legacyDecisionPending
-          );
 
           return {
             caseNo: item.caseNo,
             year: item.year,
+            caseDate: item.caseDate,
             policeStation: item.policeStation,
             crimeHead: item.crimeHead || "",
             crimeSection: item.crimeSection || item.section || "",
             punishmentCategory: item.punishmentCategory as "≤7 yrs" | ">7 yrs",
             accused: item.accused || [],
             caseStatus: caseStatus,
-            decisionPendingStatus,
+
             caseDecisionStatus: item.caseDecisionStatus as string | undefined,
             investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
             priority: item.priority as Priority | undefined,
@@ -594,6 +580,7 @@ export default function Home() {
             finalChargesheetSubmitted: item.finalChargesheetSubmitted || false,
             finalChargesheetSubmissionDate: item.finalChargesheetSubmissionDate,
             diary: item.diary || [],
+            chargesheetDeadlineType: item.chargesheetDeadlineType,
           };
         });
         setData(transformedData);
@@ -1116,10 +1103,7 @@ export default function Home() {
         finalChargesheetSubmissionDate: "2024-01-20",
       },
     ];
-    return seed.map(({ decisionPending, ...rest }) => ({
-      ...rest,
-      decisionPendingStatus: deriveDecisionPendingStatus(rest.accused || [], decisionPending),
-    }));
+    return seed;
   });
 
   // Helper function to check if a date is older than X days
@@ -1134,6 +1118,40 @@ export default function Home() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     return diffDays > daysThreshold;
+  };
+
+  // Helper to calculate chargesheet alert
+  const calculateChargesheetAlert = (row: CaseRow) => {
+    if (row.finalChargesheetSubmitted) return null;
+
+    const deadlineType = row.chargesheetDeadlineType || "60";
+    const deadlineDays = parseInt(deadlineType);
+
+    // Find earliest arrest date
+    const arrestDates = (row.accused || [])
+      .map((acc: any) => acc.arrestedDate || acc.arrestedOn)
+      .filter((date: any) => date)
+      .map((date: string) => new Date(date).getTime())
+      .filter((timestamp: number) => !isNaN(timestamp));
+
+    if (arrestDates.length === 0) return null;
+
+    const earliestArrestDate = new Date(Math.min(...arrestDates));
+    const deadlineDate = new Date(earliestArrestDate);
+    deadlineDate.setDate(deadlineDate.getDate() + deadlineDays);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deadlineDate.setHours(0, 0, 0, 0);
+
+    const daysRemaining = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      daysRemaining,
+      deadlineDate: deadlineDate.toISOString().split('T')[0],
+      deadlineType,
+      isOverdue: daysRemaining < 0,
+    };
   };
 
   const filtered = useMemo(() => {
@@ -1364,8 +1382,7 @@ export default function Home() {
         // Case status filter
         if (filters.caseStatus.length > 0 && !filters.caseStatus.includes(row.caseStatus)) return null;
 
-        // Decision Pending filter (derived from accused statuses)
-        if (filters.decisionPendingStatus && row.decisionPendingStatus !== filters.decisionPendingStatus) return null;
+
 
         // Case Decision Status filter
         if (filters.caseDecisionStatus && row.caseDecisionStatus !== filters.caseDecisionStatus) return null;
@@ -1405,7 +1422,15 @@ export default function Home() {
         if (filters.unarrestedCountMin && unarrestedCount < Number(filters.unarrestedCountMin)) return null;
         if (filters.unarrestedCountMax && unarrestedCount > Number(filters.unarrestedCountMax)) return null;
 
-        // Date filters (if we had case dates in data, we'd check them here)
+        // Date filters
+        if (filters.caseDateFrom || filters.caseDateTo) {
+          if (!row.caseDate) return null;
+          const cDate = new Date(row.caseDate);
+          if (filters.caseDateFrom && cDate < new Date(filters.caseDateFrom)) return null;
+          if (filters.caseDateTo && cDate > new Date(filters.caseDateTo)) return null;
+        }
+
+        // Arrest Date filters
         // For now, we'll check arrest dates
         if (filters.arrestDateFrom || filters.arrestDateTo) {
           const hasArrestedWithDate = row.accused.some(a => {
@@ -1455,8 +1480,26 @@ export default function Home() {
         }
         if (filters.reportR1DateFrom && (!r1Date || new Date(r1Date) < new Date(filters.reportR1DateFrom))) return null;
         if (filters.reportR1DateTo && (!r1Date || new Date(r1Date) > new Date(filters.reportR1DateTo))) return null;
-        if (filters.reportR1IssuedMonthsAgo) {
-          if (!r1Date || !checkTimeAgo(r1Date, filters.reportR1IssuedMonthsAgo)) return null;
+        // Last R Report Not Updated
+        if (filters.reportRNotUpdatedDays) {
+          const rDates = [r1Date, r2Date, r3Date]
+            .filter(d => d)
+            .map(d => new Date(d).getTime());
+
+          if (rDates.length === 0) return null;
+          const lastR = new Date(Math.max(...rDates)).toISOString();
+          if (!checkTimeAgo(lastR, filters.reportRNotUpdatedDays)) return null;
+        }
+
+        // Last PR Report Not Updated
+        if (filters.reportPRNotUpdatedDays) {
+          const prDates = [pr1Date, pr2Date, pr3Date]
+            .filter(d => d)
+            .map(d => new Date(d).getTime());
+
+          if (prDates.length === 0) return null;
+          const lastPR = new Date(Math.max(...prDates)).toISOString();
+          if (!checkTimeAgo(lastPR, filters.reportPRNotUpdatedDays)) return null;
         }
 
         if (filters.reportSupervision) {
@@ -1472,9 +1515,6 @@ export default function Home() {
         }
         if (filters.reportR2DateFrom && (!r2Date || new Date(r2Date) < new Date(filters.reportR2DateFrom))) return null;
         if (filters.reportR2DateTo && (!r2Date || new Date(r2Date) > new Date(filters.reportR2DateTo))) return null;
-        if (filters.reportR2IssuedMonthsAgo) {
-          if (!r2Date || !checkTimeAgo(r2Date, filters.reportR2IssuedMonthsAgo)) return null;
-        }
 
         if (filters.reportR3) {
           const hasR3 = filters.reportR3 === "Yes" ? !!r3Date : !r3Date;
@@ -1482,9 +1522,6 @@ export default function Home() {
         }
         if (filters.reportR3DateFrom && (!r3Date || new Date(r3Date) < new Date(filters.reportR3DateFrom))) return null;
         if (filters.reportR3DateTo && (!r3Date || new Date(r3Date) > new Date(filters.reportR3DateTo))) return null;
-        if (filters.reportR3IssuedMonthsAgo) {
-          if (!r3Date || !checkTimeAgo(r3Date, filters.reportR3IssuedMonthsAgo)) return null;
-        }
 
         if (filters.reportPR1) {
           const hasPR1 = filters.reportPR1 === "Yes" ? !!pr1Date : !pr1Date;
@@ -1492,9 +1529,6 @@ export default function Home() {
         }
         if (filters.reportPR1DateFrom && (!pr1Date || new Date(pr1Date) < new Date(filters.reportPR1DateFrom))) return null;
         if (filters.reportPR1DateTo && (!pr1Date || new Date(pr1Date) > new Date(filters.reportPR1DateTo))) return null;
-        if (filters.reportPR1IssuedMonthsAgo) {
-          if (!pr1Date || !checkTimeAgo(pr1Date, filters.reportPR1IssuedMonthsAgo)) return null;
-        }
 
         if (filters.reportPR2) {
           const hasPR2 = filters.reportPR2 === "Yes" ? !!pr2Date : !pr2Date;
@@ -1502,9 +1536,6 @@ export default function Home() {
         }
         if (filters.reportPR2DateFrom && (!pr2Date || new Date(pr2Date) < new Date(filters.reportPR2DateFrom))) return null;
         if (filters.reportPR2DateTo && (!pr2Date || new Date(pr2Date) > new Date(filters.reportPR2DateTo))) return null;
-        if (filters.reportPR2IssuedMonthsAgo) {
-          if (!pr2Date || !checkTimeAgo(pr2Date, filters.reportPR2IssuedMonthsAgo)) return null;
-        }
 
         if (filters.reportPR3) {
           const hasPR3 = filters.reportPR3 === "Yes" ? !!pr3Date : !pr3Date;
@@ -1512,9 +1543,6 @@ export default function Home() {
         }
         if (filters.reportPR3DateFrom && (!pr3Date || new Date(pr3Date) < new Date(filters.reportPR3DateFrom))) return null;
         if (filters.reportPR3DateTo && (!pr3Date || new Date(pr3Date) > new Date(filters.reportPR3DateTo))) return null;
-        if (filters.reportPR3IssuedMonthsAgo) {
-          if (!pr3Date || !checkTimeAgo(pr3Date, filters.reportPR3IssuedMonthsAgo)) return null;
-        }
 
         if (filters.reportFPR) {
           const hasFPR = filters.reportFPR === "Yes" ? !!row.reports?.fpr : !row.reports?.fpr;
@@ -1562,6 +1590,27 @@ export default function Home() {
         if (filters.finalChargesheetSubmissionDateFrom && (!row.finalChargesheetSubmissionDate || new Date(row.finalChargesheetSubmissionDate) < new Date(filters.finalChargesheetSubmissionDateFrom))) return null;
         if (filters.finalChargesheetSubmissionDateTo && (!row.finalChargesheetSubmissionDate || new Date(row.finalChargesheetSubmissionDate) > new Date(filters.finalChargesheetSubmissionDateTo))) return null;
 
+        // Diary Not Updated Since filter
+        if (filters.diaryNotUpdatedDays) {
+          const days = Number(filters.diaryNotUpdatedDays);
+          if (!isNaN(days) && days > 0) {
+            const diaryEntries = row.diary || [];
+            if (diaryEntries.length === 0) return null;
+
+            const dates = diaryEntries
+              .map(d => d.diaryDate ? new Date(d.diaryDate).getTime() : 0)
+              .filter(d => d > 0);
+
+            if (dates.length === 0) return null;
+
+            const lastUpdate = Math.max(...dates);
+            const cutoff = new Date().getTime() - (days * 24 * 60 * 60 * 1000);
+
+            // If last update is more recent than cutoff, exclude it
+            if (lastUpdate > cutoff) return null;
+          }
+        }
+
         // Diary filters
         if (filters.diaryNo || filters.diaryDateFrom || filters.diaryDateTo) {
           const diaryEntries = row.diary || [];
@@ -1601,7 +1650,6 @@ export default function Home() {
       section: "",
       punishment: [],
       caseStatus: [],
-      decisionPendingStatus: "",
       caseDecisionStatus: "",
       investigationStatus: [],
       priority: [],
@@ -1663,30 +1711,26 @@ export default function Home() {
       reportR1: "",
       reportR1DateFrom: "",
       reportR1DateTo: "",
-      reportR1IssuedMonthsAgo: "",
+      reportRNotUpdatedDays: "",
       reportSupervision: "",
       reportSupervisionDateFrom: "",
       reportSupervisionDateTo: "",
       reportR2: "",
       reportR2DateFrom: "",
       reportR2DateTo: "",
-      reportR2IssuedMonthsAgo: "",
       reportR3: "",
       reportR3DateFrom: "",
       reportR3DateTo: "",
-      reportR3IssuedMonthsAgo: "",
       reportPR1: "",
       reportPR1DateFrom: "",
       reportPR1DateTo: "",
-      reportPR1IssuedMonthsAgo: "",
+      reportPRNotUpdatedDays: "",
       reportPR2: "",
       reportPR2DateFrom: "",
       reportPR2DateTo: "",
-      reportPR2IssuedMonthsAgo: "",
       reportPR3: "",
       reportPR3DateFrom: "",
       reportPR3DateTo: "",
-      reportPR3IssuedMonthsAgo: "",
       reportFPR: "",
       reportFPRDateFrom: "",
       reportFPRDateTo: "",
@@ -1707,6 +1751,7 @@ export default function Home() {
       diaryNo: "",
       diaryDateFrom: "",
       diaryDateTo: "",
+      diaryNotUpdatedDays: "",
       pageSize: 10,
     });
   }
@@ -1719,19 +1764,6 @@ export default function Home() {
         return "bg-orange-100 text-orange-800 ring-orange-600/20";
       default:
         return "bg-red-100 text-red-800 ring-red-600/20";
-    }
-  }
-
-  function decisionPendingBadgeColor(status: DecisionPendingStatus) {
-    switch (status) {
-      case "Decision pending":
-        return "bg-purple-100 text-purple-800 ring-purple-600/20";
-      case "Partial":
-        return "bg-amber-100 text-amber-800 ring-amber-600/20";
-      case "Completed":
-        return "bg-emerald-100 text-emerald-800 ring-emerald-600/20";
-      default:
-        return "bg-slate-100 text-slate-800 ring-slate-600/20";
     }
   }
 
@@ -1914,6 +1946,14 @@ export default function Home() {
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Section</label>
                     <input value={filters.section} onChange={(e) => setFilters({ ...filters, section: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="e.g., 420 IPC" />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date From</label>
+                    <input type="date" value={filters.caseDateFrom} onChange={(e) => setFilters({ ...filters, caseDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date To</label>
+                    <input type="date" value={filters.caseDateTo} onChange={(e) => setFilters({ ...filters, caseDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                  </div>
                 </div>
               </div>
 
@@ -2051,23 +2091,7 @@ export default function Home() {
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Decision Status (Accused)</label>
-                    <select
-                      value={filters.decisionPendingStatus}
-                      onChange={(e) =>
-                        setFilters({ ...filters, decisionPendingStatus: e.target.value as "" | DecisionPendingStatus })
-                      }
-                      className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                    >
-                      <option value="">All statuses</option>
-                      {DECISION_PENDING_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Decision Status</label>
                     <select
@@ -2595,6 +2619,17 @@ export default function Home() {
                               className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
                             />
                           </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Not Updated For (Days)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={filters.diaryNotUpdatedDays}
+                              onChange={(e) => setFilters({ ...filters, diaryNotUpdatedDays: e.target.value })}
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                              placeholder="Enter days"
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
@@ -2629,14 +2664,7 @@ export default function Home() {
                     {expandedSections.dates && (
                       <div className="px-5 pb-5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date From</label>
-                            <input type="date" value={filters.caseDateFrom} onChange={(e) => setFilters({ ...filters, caseDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date To</label>
-                            <input type="date" value={filters.caseDateTo} onChange={(e) => setFilters({ ...filters, caseDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                          </div>
+
                           <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">Arrest Date From</label>
                             <input type="date" value={filters.arrestDateFrom} onChange={(e) => setFilters({ ...filters, arrestDateFrom: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
@@ -2679,6 +2707,32 @@ export default function Home() {
                     {expandedSections.reports && (
                       <div className="px-5 pb-5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {/* Aggregate Report Filters */}
+                          <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1.5">Last R Report Not Updated For (Days)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={filters.reportRNotUpdatedDays}
+                                onChange={(e) => setFilters({ ...filters, reportRNotUpdatedDays: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                                placeholder="Enter days"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-1.5">Last PR Report Not Updated For (Days)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={filters.reportPRNotUpdatedDays}
+                                onChange={(e) => setFilters({ ...filters, reportPRNotUpdatedDays: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
+                                placeholder="Enter days"
+                              />
+                            </div>
+                          </div>
+
                           {/* R1 Report */}
                           <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Report</label>
@@ -2695,13 +2749,6 @@ export default function Home() {
                           <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">R1 Date To</label>
                             <input type="date" value={filters.reportR1DateTo} onChange={(e) => setFilters({ ...filters, reportR1DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                          </div>
-                          <div>
-                            <TimeAgoFilter
-                              value={filters.reportR1IssuedMonthsAgo}
-                              onChange={(val) => setFilters({ ...filters, reportR1IssuedMonthsAgo: val })}
-                              label="R1 Issued More Than"
-                            />
                           </div>
 
                           {/* Supervision Report */}
@@ -2739,13 +2786,6 @@ export default function Home() {
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">R2 Date To</label>
                             <input type="date" value={filters.reportR2DateTo} onChange={(e) => setFilters({ ...filters, reportR2DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
                           </div>
-                          <div>
-                            <TimeAgoFilter
-                              value={filters.reportR2IssuedMonthsAgo}
-                              onChange={(val) => setFilters({ ...filters, reportR2IssuedMonthsAgo: val })}
-                              label="R2 Issued More Than"
-                            />
-                          </div>
 
                           {/* R3 Report */}
                           <div>
@@ -2763,13 +2803,6 @@ export default function Home() {
                           <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">R3 Date To</label>
                             <input type="date" value={filters.reportR3DateTo} onChange={(e) => setFilters({ ...filters, reportR3DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                          </div>
-                          <div>
-                            <TimeAgoFilter
-                              value={filters.reportR3IssuedMonthsAgo}
-                              onChange={(val) => setFilters({ ...filters, reportR3IssuedMonthsAgo: val })}
-                              label="R3 Issued More Than"
-                            />
                           </div>
 
                           {/* PR1 Report (issued by DSP) */}
@@ -2789,13 +2822,6 @@ export default function Home() {
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">PR1 Date To</label>
                             <input type="date" value={filters.reportPR1DateTo} onChange={(e) => setFilters({ ...filters, reportPR1DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
                           </div>
-                          <div>
-                            <TimeAgoFilter
-                              value={filters.reportPR1IssuedMonthsAgo}
-                              onChange={(val) => setFilters({ ...filters, reportPR1IssuedMonthsAgo: val })}
-                              label="PR1 Issued More Than"
-                            />
-                          </div>
 
                           {/* PR2 Report (issued by DSP) */}
                           <div>
@@ -2814,13 +2840,6 @@ export default function Home() {
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">PR2 Date To</label>
                             <input type="date" value={filters.reportPR2DateTo} onChange={(e) => setFilters({ ...filters, reportPR2DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
                           </div>
-                          <div>
-                            <TimeAgoFilter
-                              value={filters.reportPR2IssuedMonthsAgo}
-                              onChange={(val) => setFilters({ ...filters, reportPR2IssuedMonthsAgo: val })}
-                              label="PR2 Issued More Than"
-                            />
-                          </div>
 
                           {/* PR3 Report (issued by DSP) */}
                           <div>
@@ -2838,13 +2857,6 @@ export default function Home() {
                           <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1.5">PR3 Date To</label>
                             <input type="date" value={filters.reportPR3DateTo} onChange={(e) => setFilters({ ...filters, reportPR3DateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                          </div>
-                          <div>
-                            <TimeAgoFilter
-                              value={filters.reportPR3IssuedMonthsAgo}
-                              onChange={(val) => setFilters({ ...filters, reportPR3IssuedMonthsAgo: val })}
-                              label="PR3 Issued More Than"
-                            />
                           </div>
 
                           {/* FPR Report */}
@@ -2999,11 +3011,12 @@ export default function Home() {
                       <tr className="*:\:px-4 *:\:py-3">
                         <th className="px-4 py-3 text-left font-medium">Case No.</th>
                         <th className="px-4 py-3 text-left font-medium">Year</th>
+                        <th className="px-4 py-3 text-left font-medium">Case Date</th>
                         <th className="px-4 py-3 text-left font-medium">Police Station</th>
                         <th className="px-4 py-3 text-left font-medium">Crime Section</th>
                         <th className="px-4 py-3 text-left font-medium">Punishment</th>
                         <th className="px-4 py-3 text-left font-medium">Accused</th>
-                        <th className="px-4 py-3 text-left font-medium">Case Status / Accused Status</th>
+                        <th className="px-4 py-3 text-left font-medium">Case Status </th>
                         <th className="px-4 py-3 text-left font-medium">Case Decision Status</th>
                         <th className="px-4 py-3 text-right font-medium">Action</th>
                       </tr>
@@ -3020,6 +3033,7 @@ export default function Home() {
                             <tr key={row.caseNo} className="hover:bg-slate-50 odd:bg-white even:bg-slate-50/50">
                               <td className="px-4 py-3 whitespace-nowrap">{row.caseNo}</td>
                               <td className="px-4 py-3">{row.year}</td>
+                              <td className="px-4 py-3">{row.caseDate ? new Date(row.caseDate).toLocaleDateString() : "—"}</td>
                               <td className="px-4 py-3">{row.policeStation}</td>
                               <td className="px-4 py-3">{row.crimeSection}</td>
                               <td className="px-4 py-3">{row.punishmentCategory}</td>
@@ -3033,15 +3047,30 @@ export default function Home() {
                                 </div>
                               </td>
                               <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeColor(row.caseStatus)}`}>
-                                    {row.caseStatus}
-                                  </span>
-                                  <span
-                                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${decisionPendingBadgeColor(row.decisionPendingStatus)}`}
-                                  >
-                                    {row.decisionPendingStatus}
-                                  </span>
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusBadgeColor(row.caseStatus)}`}>
+                                      {row.caseStatus}
+                                    </span>
+                                  </div>
+                                  {(() => {
+                                    const alert = calculateChargesheetAlert(row);
+                                    if (!alert) return null;
+                                    return (
+                                      <div className={`flex items-center gap-1.5 text-xs font-medium ${alert.isOverdue ? "text-red-700" : alert.daysRemaining <= 7 ? "text-orange-700" : "text-blue-700"
+                                        }`}>
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <circle cx="12" cy="12" r="10" />
+                                          <polyline points="12 6 12 12 16 14" />
+                                        </svg>
+                                        <span>
+                                          {alert.isOverdue
+                                            ? `Overdue: ${Math.abs(alert.daysRemaining)}d`
+                                            : `${alert.daysRemaining}d left (${alert.deadlineType}d)`}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </td>
                               <td className="px-4 py-3">
