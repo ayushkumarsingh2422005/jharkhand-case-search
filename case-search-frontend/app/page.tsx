@@ -466,7 +466,6 @@ export default function Home() {
     arrestDateTo: "",
     chargesheetDeadlineType: "" as "" | "60" | "90",
     chargesheetStatus: "" as "" | "Overdue" | "Pending",
-    chargesheetDueInDays: "",
     // Report filters
     reportR1: "" as "" | "Yes" | "No",
     reportR1DateFrom: "",
@@ -1447,7 +1446,7 @@ export default function Home() {
         }
 
         // Chargesheet filters
-        if (filters.chargesheetDeadlineType || filters.chargesheetStatus || filters.chargesheetDueInDays) {
+        if (filters.chargesheetDeadlineType || filters.chargesheetStatus) {   
           const alert = calculateChargesheetAlert(row);
 
           // Filter by Deadline Type (60/90)
@@ -1457,28 +1456,12 @@ export default function Home() {
           }
 
           // If we need to check status or days, we need the alert object
-          if (filters.chargesheetStatus || filters.chargesheetDueInDays) {
+          if (filters.chargesheetStatus) {
             if (!alert) return null; // No alert means no deadline applicable (e.g. no arrest)
 
             // Filter by Status
             if (filters.chargesheetStatus === "Overdue" && !alert.isOverdue) return null;
             if (filters.chargesheetStatus === "Pending" && alert.isOverdue) return null;
-
-            // Filter by Days Left (Due within X days)
-            if (filters.chargesheetDueInDays) {
-              const days = Number(filters.chargesheetDueInDays);
-              // If looking for pending cases within X days
-              if (!alert.isOverdue && alert.daysRemaining > days) return null;
-              // If looking for overdue, this filter might not apply or we assume it applies to pending only?
-              // Usually "Due in X days" implies pending. 
-              // If user selected "Overdue" AND "Due in X days", it's a contradiction, so we'll assume "Due in" applies to pending.
-              if (alert.isOverdue) {
-                // If specifically asking for overdue, we keep it. 
-                // If asking for "Pending" or "All", and "Due in X days", we exclude overdue?
-                // Let's assume "Due in X days" implies strictly positive days remaining <= X.
-                return null;
-              }
-            }
           }
         }
 
@@ -1788,7 +1771,6 @@ export default function Home() {
       finalChargesheetSubmissionDateTo: "",
       chargesheetDeadlineType: "" as "" | "60" | "90",
       chargesheetStatus: "" as "" | "Overdue" | "Pending",
-      chargesheetDueInDays: "",
       // Diary filters
       diaryNo: "",
       diaryDateFrom: "",
@@ -2178,18 +2160,6 @@ export default function Home() {
                           <option value="Overdue">Overdue</option>
                           <option value="Pending">Pending</option>
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs text-slate-500 mb-1.5">Due Within (Days)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={filters.chargesheetDueInDays}
-                          onChange={(e) => setFilters({ ...filters, chargesheetDueInDays: e.target.value })}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
-                          placeholder="e.g. 7"
-                          disabled={filters.chargesheetStatus === "Overdue"}
-                        />
                       </div>
                     </div>
                   </div>

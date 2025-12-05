@@ -857,10 +857,10 @@ export default function CaseDetail() {
                             <td className="px-4 py-2">
                               {alert ? (
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${alert.overdue
-                                    ? "bg-red-100 text-red-800 ring-red-600/20"
-                                    : alert.daysRemaining <= 7
-                                      ? "bg-orange-100 text-orange-800 ring-orange-600/20"
-                                      : "bg-blue-100 text-blue-800 ring-blue-600/20"
+                                  ? "bg-red-100 text-red-800 ring-red-600/20"
+                                  : alert.daysRemaining <= 7
+                                    ? "bg-orange-100 text-orange-800 ring-orange-600/20"
+                                    : "bg-blue-100 text-blue-800 ring-blue-600/20"
                                   }`}>
                                   {alert.overdue ? `Overdue: ${Math.abs(alert.daysRemaining)}d (${alert.type})` : `${alert.daysRemaining} days left (${alert.type})`}
                                 </span>
