@@ -10,7 +10,7 @@ type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
 type Priority = "Under monitoring" | "Normal";
 
-type AccusedStatus = "Arrested" | "Not arrested" | "Decision pending";
+type AccusedStatus = "Arrested" | "Not arrested" | "Decision pending" | "Pending Verification";
 
 type Accused = {
   name: string;
@@ -407,7 +407,7 @@ export default function Home() {
     reasonForPendency: [] as string[],
     // Accused filters
     accusedName: "",
-    accusedStatus: "" as "" | "Arrested" | "Not arrested" | "Decision pending",
+    accusedStatus: "" as "" | "Arrested" | "Not arrested" | "Decision pending" | "Pending Verification",
     accusedAddress: "",
     accusedMobileNumber: "",
     accusedAadhaarNumber: "",
@@ -464,6 +464,9 @@ export default function Home() {
     caseDateTo: "",
     arrestDateFrom: "",
     arrestDateTo: "",
+    chargesheetDeadlineType: "" as "" | "60" | "90",
+    chargesheetStatus: "" as "" | "Overdue" | "Pending",
+    chargesheetDueInDays: "",
     // Report filters
     reportR1: "" as "" | "Yes" | "No",
     reportR1DateFrom: "",
@@ -1443,6 +1446,42 @@ export default function Home() {
           if (!hasArrestedWithDate) return null;
         }
 
+        // Chargesheet filters
+        if (filters.chargesheetDeadlineType || filters.chargesheetStatus || filters.chargesheetDueInDays) {
+          const alert = calculateChargesheetAlert(row);
+
+          // Filter by Deadline Type (60/90)
+          if (filters.chargesheetDeadlineType) {
+            const type = row.chargesheetDeadlineType || "60";
+            if (type !== filters.chargesheetDeadlineType) return null;
+          }
+
+          // If we need to check status or days, we need the alert object
+          if (filters.chargesheetStatus || filters.chargesheetDueInDays) {
+            if (!alert) return null; // No alert means no deadline applicable (e.g. no arrest)
+
+            // Filter by Status
+            if (filters.chargesheetStatus === "Overdue" && !alert.isOverdue) return null;
+            if (filters.chargesheetStatus === "Pending" && alert.isOverdue) return null;
+
+            // Filter by Days Left (Due within X days)
+            if (filters.chargesheetDueInDays) {
+              const days = Number(filters.chargesheetDueInDays);
+              // If looking for pending cases within X days
+              if (!alert.isOverdue && alert.daysRemaining > days) return null;
+              // If looking for overdue, this filter might not apply or we assume it applies to pending only?
+              // Usually "Due in X days" implies pending. 
+              // If user selected "Overdue" AND "Due in X days", it's a contradiction, so we'll assume "Due in" applies to pending.
+              if (alert.isOverdue) {
+                // If specifically asking for overdue, we keep it. 
+                // If asking for "Pending" or "All", and "Due in X days", we exclude overdue?
+                // Let's assume "Due in X days" implies strictly positive days remaining <= X.
+                return null;
+              }
+            }
+          }
+        }
+
         // Report filters
         const reportsData = row.reports || {};
         const spReportsList = Array.isArray(reportsData.spReports) ? reportsData.spReports : [];
@@ -1747,6 +1786,9 @@ export default function Home() {
       finalChargesheetSubmitted: "",
       finalChargesheetSubmissionDateFrom: "",
       finalChargesheetSubmissionDateTo: "",
+      chargesheetDeadlineType: "" as "" | "60" | "90",
+      chargesheetStatus: "" as "" | "Overdue" | "Pending",
+      chargesheetDueInDays: "",
       // Diary filters
       diaryNo: "",
       diaryDateFrom: "",
@@ -2108,6 +2150,50 @@ export default function Home() {
                       <option value="Complete Pendency">Complete Pendency</option>
                     </select>
                   </div>
+
+                  {/* Chargesheet Filters */}
+                  <div className="sm:col-span-2 lg:col-span-3 border-t border-slate-200 pt-4 mt-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-3">Chargesheet Deadline Filters</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5">Deadline Type</label>
+                        <select
+                          value={filters.chargesheetDeadlineType}
+                          onChange={(e) => setFilters({ ...filters, chargesheetDeadlineType: e.target.value as any })}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                        >
+                          <option value="">All Types</option>
+                          <option value="60">60 Days</option>
+                          <option value="90">90 Days</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5">Status</label>
+                        <select
+                          value={filters.chargesheetStatus}
+                          onChange={(e) => setFilters({ ...filters, chargesheetStatus: e.target.value as any })}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                        >
+                          <option value="">All Statuses</option>
+                          <option value="Overdue">Overdue</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5">Due Within (Days)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={filters.chargesheetDueInDays}
+                          onChange={(e) => setFilters({ ...filters, chargesheetDueInDays: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                          placeholder="e.g. 7"
+                          disabled={filters.chargesheetStatus === "Overdue"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {filters.caseStatus.includes("Under investigation") && (
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">Investigation Status</label>
@@ -2242,6 +2328,7 @@ export default function Home() {
                             <option>Arrested</option>
                             <option>Not arrested</option>
                             <option>Decision pending</option>
+                            <option>Pending Verification</option>
                           </select>
                         </div>
                         <div>
@@ -3017,6 +3104,7 @@ export default function Home() {
                         <th className="px-4 py-3 text-left font-medium">Punishment</th>
                         <th className="px-4 py-3 text-left font-medium">Accused</th>
                         <th className="px-4 py-3 text-left font-medium">Case Status </th>
+                        <th className="px-4 py-3 text-left font-medium">Chargesheet Status</th>
                         <th className="px-4 py-3 text-left font-medium">Case Decision Status</th>
                         <th className="px-4 py-3 text-right font-medium">Action</th>
                       </tr>
@@ -3053,25 +3141,27 @@ export default function Home() {
                                       {row.caseStatus}
                                     </span>
                                   </div>
-                                  {(() => {
-                                    const alert = calculateChargesheetAlert(row);
-                                    if (!alert) return null;
-                                    return (
-                                      <div className={`flex items-center gap-1.5 text-xs font-medium ${alert.isOverdue ? "text-red-700" : alert.daysRemaining <= 7 ? "text-orange-700" : "text-blue-700"
-                                        }`}>
-                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                          <circle cx="12" cy="12" r="10" />
-                                          <polyline points="12 6 12 12 16 14" />
-                                        </svg>
-                                        <span>
-                                          {alert.isOverdue
-                                            ? `Overdue: ${Math.abs(alert.daysRemaining)}d`
-                                            : `${alert.daysRemaining}d left (${alert.deadlineType}d)`}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()}
                                 </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                {(() => {
+                                  const alert = calculateChargesheetAlert(row);
+                                  if (!alert) return <span className="text-slate-400 text-xs">—</span>;
+                                  return (
+                                    <div className={`flex items-center gap-1.5 text-xs font-medium ${alert.isOverdue ? "text-red-700" : alert.daysRemaining <= 7 ? "text-orange-700" : "text-blue-700"
+                                      }`}>
+                                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <polyline points="12 6 12 12 16 14" />
+                                      </svg>
+                                      <span>
+                                        {alert.isOverdue
+                                          ? `Overdue: ${Math.abs(alert.daysRemaining)}d (${alert.deadlineType})`
+                                          : `${alert.daysRemaining} days left (${alert.deadlineType})`}
+                                      </span>
+                                    </div>
+                                  );
+                                })()}
                               </td>
                               <td className="px-4 py-3">
                                 {row.caseDecisionStatus ? (

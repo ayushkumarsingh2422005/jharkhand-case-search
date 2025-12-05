@@ -559,20 +559,27 @@ export default function CaseDetail() {
 
   // Charge sheet alert calculation
   const getChargesheetAlert = (arrestedOn?: string) => {
-    if (!arrestedOn) return null;
-    const days = getDaysAfterArrest(arrestedOn);
-    if (!days) return null;
+    if (!arrestedOn || !caseData || caseData.finalChargesheetSubmitted) return null;
 
-    // Alert at 50 days for 60-day deadline, 80 days for 90-day deadline
-    const alert60 = days >= 50 && days < 60;
-    const alert90 = days >= 80 && days < 90;
+    const deadlineType = caseData.chargesheetDeadlineType || "60";
+    const deadlineDays = parseInt(deadlineType);
 
-    if (alert60) return { type: "60-day", daysRemaining: 60 - days, alert: true };
-    if (alert90) return { type: "90-day", daysRemaining: 90 - days, alert: true };
-    if (days >= 60 && days < 90) return { type: "60-day", daysRemaining: 0, alert: true, overdue: true };
-    if (days >= 90) return { type: "90-day", daysRemaining: 0, alert: true, overdue: true };
+    const arrestDate = new Date(arrestedOn);
+    const deadlineDate = new Date(arrestDate);
+    deadlineDate.setDate(deadlineDate.getDate() + deadlineDays);
 
-    return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deadlineDate.setHours(0, 0, 0, 0);
+
+    const daysRemaining = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      type: `${deadlineType}-day`,
+      daysRemaining: daysRemaining,
+      overdue: daysRemaining < 0,
+      alert: true
+    };
   };
 
   const reasonForPendency = useMemo(() => {
@@ -849,9 +856,13 @@ export default function CaseDetail() {
                             </td>
                             <td className="px-4 py-2">
                               {alert ? (
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${alert.overdue ? "bg-red-100 text-red-800 ring-red-600/20" : "bg-yellow-100 text-yellow-800 ring-yellow-600/20"
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${alert.overdue
+                                    ? "bg-red-100 text-red-800 ring-red-600/20"
+                                    : alert.daysRemaining <= 7
+                                      ? "bg-orange-100 text-orange-800 ring-orange-600/20"
+                                      : "bg-blue-100 text-blue-800 ring-blue-600/20"
                                   }`}>
-                                  {alert.overdue ? `Overdue (${alert.type})` : `${alert.daysRemaining} days remaining (${alert.type})`}
+                                  {alert.overdue ? `Overdue: ${Math.abs(alert.daysRemaining)}d (${alert.type})` : `${alert.daysRemaining} days left (${alert.type})`}
                                 </span>
                               ) : (
                                 "—"
