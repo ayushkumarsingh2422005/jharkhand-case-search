@@ -33,6 +33,12 @@ export default function ChargesheetStatusPage() {
     const { user } = useAuth();
     const [data, setData] = useState<CaseRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [filters, setFilters] = useState({
+        deadlineType: "" as "" | "60" | "90",
+        status: "" as "" | "Overdue" | "Pending",
+        policeStation: "",
+        accusedName: ""
+    });
 
     useEffect(() => {
         fetchCases();
@@ -58,11 +64,12 @@ export default function ChargesheetStatusPage() {
     const calculateAccusedAlert = (row: CaseRow, accused: Accused) => {
         if (row.finalChargesheetSubmitted) return null;
 
-        // Only calculate for arrested accused
-        if (accused.status !== "Arrested") return null;
-
+        // Check if accused has an arrest date (regardless of status)
         const arrestDateStr = accused.arrestedDate || accused.arrestedOn;
         if (!arrestDateStr) return null;
+
+        // Only show for arrested or pending verification (those with arrest dates)
+        if (accused.status !== "Arrested" && accused.status !== "Pending Verification") return null;
 
         const deadlineType = row.chargesheetDeadlineType || "60";
         const deadlineDays = parseInt(deadlineType);
@@ -90,7 +97,7 @@ export default function ChargesheetStatusPage() {
 
     const pendingAccusedList = useMemo(() => {
         const list: Array<{
-            id: string; // unique id for key
+            id: string;
             caseRow: CaseRow;
             accused: Accused;
             alert: NonNullable<ReturnType<typeof calculateAccusedAlert>>;
@@ -115,6 +122,36 @@ export default function ChargesheetStatusPage() {
         return list.sort((a, b) => a.alert.daysRemaining - b.alert.daysRemaining);
     }, [data]);
 
+    const filteredList = useMemo(() => {
+        return pendingAccusedList.filter(item => {
+            // Deadline Type filter
+            if (filters.deadlineType && item.alert.deadlineType !== filters.deadlineType) return false;
+
+            // Status filter
+            if (filters.status === "Overdue" && !item.alert.isOverdue) return false;
+            if (filters.status === "Pending" && item.alert.isOverdue) return false;
+
+            // Police Station filter
+            if (filters.policeStation && !item.caseRow.policeStation.toLowerCase().includes(filters.policeStation.toLowerCase())) return false;
+
+            // Accused Name filter
+            if (filters.accusedName && !item.accused.name.toLowerCase().includes(filters.accusedName.toLowerCase())) return false;
+
+            return true;
+        });
+    }, [pendingAccusedList, filters]);
+
+    const resetFilters = () => {
+        setFilters({
+            deadlineType: "",
+            status: "",
+            policeStation: "",
+            accusedName: ""
+        });
+    };
+
+    const hasActiveFilters = filters.deadlineType || filters.status || filters.policeStation || filters.accusedName;
+
     return (
         <AuthGuard>
             <div className="min-h-screen bg-slate-50 pb-12">
@@ -131,13 +168,81 @@ export default function ChargesheetStatusPage() {
                                 <h1 className="text-xl font-bold text-slate-900">Pending Chargesheets (By Accused)</h1>
                             </div>
                             <div className="text-sm text-slate-500">
-                                {pendingAccusedList.length} Accused Pending
+                                {filteredList.length} of {pendingAccusedList.length} Accused
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {/* Filters */}
+                    <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200 mb-6 overflow-hidden">
+                        <div className="px-4 py-3 md:px-6 border-b border-slate-200">
+                            <h3 className="text-sm font-semibold text-slate-800">Filters</h3>
+                        </div>
+                        <div className="px-4 py-4 md:px-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Deadline Type</label>
+                                    <select
+                                        value={filters.deadlineType}
+                                        onChange={(e) => setFilters({ ...filters, deadlineType: e.target.value as any })}
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                                    >
+                                        <option value="">All Types</option>
+                                        <option value="60">60 Days</option>
+                                        <option value="90">90 Days</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Status</label>
+                                    <select
+                                        value={filters.status}
+                                        onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                                    >
+                                        <option value="">All Statuses</option>
+                                        <option value="Overdue">Overdue</option>
+                                        <option value="Pending">Pending</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Police Station</label>
+                                    <input
+                                        type="text"
+                                        value={filters.policeStation}
+                                        onChange={(e) => setFilters({ ...filters, policeStation: e.target.value })}
+                                        placeholder="Search station..."
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Accused Name</label>
+                                    <input
+                                        type="text"
+                                        value={filters.accusedName}
+                                        onChange={(e) => setFilters({ ...filters, accusedName: e.target.value })}
+                                        placeholder="Search name..."
+                                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow text-sm"
+                                    />
+                                </div>
+                            </div>
+                            {hasActiveFilters && (
+                                <div className="mt-4 flex items-center gap-2">
+                                    <button
+                                        onClick={resetFilters}
+                                        className="text-sm text-blue-700 hover:text-blue-800 font-medium"
+                                    >
+                                        Clear Filters
+                                    </button>
+                                    <span className="text-sm text-slate-600">
+                                        {filteredList.length} result{filteredList.length !== 1 ? 's' : ''} found
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {loading ? (
                         <div className="flex justify-center items-center h-64">
                             <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24">
@@ -159,7 +264,7 @@ export default function ChargesheetStatusPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-slate-200">
-                                        {pendingAccusedList.map((item) => (
+                                        {filteredList.map((item) => (
                                             <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className="text-sm font-medium text-slate-900">{item.accused.name}</span>
@@ -196,10 +301,10 @@ export default function ChargesheetStatusPage() {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {pendingAccusedList.length === 0 && (
+                                        {filteredList.length === 0 && (
                                             <tr>
                                                 <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                                                    No pending chargesheets found for any accused.
+                                                    {hasActiveFilters ? "No accused match your filters." : "No pending chargesheets found for any accused."}
                                                 </td>
                                             </tr>
                                         )}
