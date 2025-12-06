@@ -15,6 +15,10 @@ type Accused = {
     status: AccusedStatus;
     arrestedDate?: string;
     arrestedOn?: string;
+    chargesheet?: {
+        date?: string;
+        file?: { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null;
+    };
 };
 
 type CaseRow = {
@@ -63,6 +67,9 @@ export default function ChargesheetStatusPage() {
     // Helper to calculate chargesheet alert for a specific accused
     const calculateAccusedAlert = (row: CaseRow, accused: Accused) => {
         if (row.finalChargesheetSubmitted) return null;
+
+        // Skip if this accused already has their chargesheet filed
+        if (accused.chargesheet?.date) return null;
 
         // Check if accused has an arrest date (regardless of status)
         const arrestDateStr = accused.arrestedDate || accused.arrestedOn;

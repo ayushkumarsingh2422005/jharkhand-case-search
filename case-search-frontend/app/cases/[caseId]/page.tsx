@@ -400,8 +400,9 @@ export default function CaseDetail() {
     const deadlineType = caseData.chargesheetDeadlineType || "60";
     const deadlineDays = parseInt(deadlineType);
 
-    // Find earliest arrest date
+    // Find earliest arrest date from accused who don't have chargesheet filed yet
     const arrestDates = (caseData.accused || [])
+      .filter((acc: any) => !acc.chargesheet?.date) // Only consider accused without chargesheet
       .map((acc: any) => acc.arrestedDate || acc.arrestedOn)
       .filter((date: any) => date)
       .map((date: string) => new Date(date).getTime())
@@ -558,8 +559,11 @@ export default function CaseDetail() {
   };
 
   // Charge sheet alert calculation
-  const getChargesheetAlert = (arrestedOn?: string) => {
+  const getChargesheetAlert = (arrestedOn?: string, accusedChargesheet?: any) => {
     if (!arrestedOn || !caseData || caseData.finalChargesheetSubmitted) return null;
+
+    // Skip if this accused already has their chargesheet filed
+    if (accusedChargesheet?.date) return null;
 
     const deadlineType = caseData.chargesheetDeadlineType || "60";
     const deadlineDays = parseInt(deadlineType);
@@ -824,7 +828,7 @@ export default function CaseDetail() {
                     <tbody className="divide-y divide-slate-200">
                       {accused.map((a) => {
                         const daysAfterArrest = getDaysAfterArrest(a.arrestedOn);
-                        const alert = getChargesheetAlert(a.arrestedOn);
+                        const alert = getChargesheetAlert(a.arrestedOn, a.chargesheet);
                         return (
                           <tr key={a.name} className="hover:bg-slate-50">
                             <td className="px-4 py-2">{a.name}</td>

@@ -1129,8 +1129,9 @@ export default function Home() {
     const deadlineType = row.chargesheetDeadlineType || "60";
     const deadlineDays = parseInt(deadlineType);
 
-    // Find earliest arrest date
+    // Find earliest arrest date from accused who don't have chargesheet filed yet
     const arrestDates = (row.accused || [])
+      .filter((acc: any) => !acc.chargesheet?.date) // Only consider accused without chargesheet
       .map((acc: any) => acc.arrestedDate || acc.arrestedOn)
       .filter((date: any) => date)
       .map((date: string) => new Date(date).getTime())
