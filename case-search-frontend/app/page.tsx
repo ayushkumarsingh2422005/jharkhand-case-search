@@ -1446,7 +1446,7 @@ export default function Home() {
         }
 
         // Chargesheet filters
-        if (filters.chargesheetDeadlineType || filters.chargesheetStatus) {   
+        if (filters.chargesheetDeadlineType || filters.chargesheetStatus) {
           const alert = calculateChargesheetAlert(row);
 
           // Filter by Deadline Type (60/90)
@@ -1919,14 +1919,27 @@ export default function Home() {
           {/* Search Card */}
           <div className="bg-white rounded-lg shadow-sm ring-1 ring-slate-200">
             <div className="px-4 py-4 md:px-6 md:py-5 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-blue-600/10 text-blue-700 grid place-content-center">
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-blue-600/10 text-blue-700 grid place-content-center">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                  </div>
+                  <div>
+                    <h2 className="text-base md:text-lg font-semibold tracking-wide">Search Cases</h2>
+                    <p className="text-xs md:text-sm text-slate-600">Use filters to quickly locate a case</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-base md:text-lg font-semibold tracking-wide">Search Cases</h2>
-                  <p className="text-xs md:text-sm text-slate-600">Use filters to quickly locate a case</p>
-                </div>
+                <Link
+                  href="/chargesheet-status"
+                  className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm text-slate-700 font-medium shadow-sm ring-1 ring-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-colors"
+                >
+                  <svg className="h-4 w-4 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  Pending Chargesheets
+                </Link>
               </div>
             </div>
 

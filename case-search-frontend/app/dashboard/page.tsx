@@ -146,6 +146,19 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               {currentUser?.role === "SuperAdmin" && (
                 <Link
+                  href="/chargesheet-status"
+                  className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-slate-700 font-medium shadow-sm ring-1 ring-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-colors"
+                >
+                  <svg className="h-5 w-5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  Pending Chargesheets
+                </Link>
+              )}
+              {currentUser?.role === "SuperAdmin" && (
+                <Link
                   href="/add"
                   className="inline-flex items-center gap-2 rounded-md bg-blue-800 px-4 py-2 text-white font-medium shadow-sm hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700 transition-colors"
                 >
