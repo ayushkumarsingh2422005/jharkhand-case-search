@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
+// import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs/promises';
+import path from 'path';
 
 // Configure Cloudinary
+/*
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+*/
 
 // POST - Upload file to Cloudinary (Authenticated users only)
 export async function POST(request: NextRequest) {
@@ -34,6 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if Cloudinary is configured
+    /*
     if (!process.env.CLOUDINARY_CLOUD_NAME || 
         !process.env.CLOUDINARY_API_KEY || 
         !process.env.CLOUDINARY_API_SECRET) {
@@ -45,6 +50,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+    */
 
     // Parse the form data
     const formData = await request.formData();
@@ -86,6 +92,7 @@ export async function POST(request: NextRequest) {
     // Get optional folder and resource_type from form data
     const folder = formData.get('folder') as string || 'case-reports';
     const resourceTypeInput = formData.get('resource_type') as string | null;
+    /*
     const validResourceTypes = ['raw', 'auto', 'image', 'video'] as const;
     const resourceType = (resourceTypeInput && validResourceTypes.includes(resourceTypeInput as any))
       ? (resourceTypeInput as typeof validResourceTypes[number])
@@ -107,6 +114,45 @@ export async function POST(request: NextRequest) {
         }
       );
     }) as any;
+    */
+
+    // LOCAL SYSTEM UPLOAD IMPLEMENTATION
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+
+    // Ensure directory exists
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+    } catch (e) {
+      console.error('Error creating upload directory:', e);
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const filename = `${timestamp}-${sanitizedFilename}`;
+    const filepath = path.join(uploadDir, filename);
+
+    // Write file
+    await fs.writeFile(filepath, buffer);
+
+    // Create mock Cloudinary response object
+    const fileUrl = `/uploads/${filename}`;
+    const uploadResult = {
+      public_id: filename,
+      url: fileUrl,
+      secure_url: fileUrl,
+      format: file.name.split('.').pop() || '',
+      width: 0,
+      height: 0,
+      bytes: file.size,
+      resource_type: 'auto',
+      created_at: new Date().toISOString(),
+      version: 1,
+      signature: 'local-sig',
+      etag: 'local-etag',
+      original_filename: file.name,
+      folder: 'uploads'
+    };
 
     // Return the necessary data for future CRUD operations
     return NextResponse.json({
@@ -116,7 +162,7 @@ export async function POST(request: NextRequest) {
         public_id: uploadResult.public_id,
         url: uploadResult.url,
         secure_url: uploadResult.secure_url,
-        
+
         // Additional metadata
         format: uploadResult.format,
         width: uploadResult.width,
@@ -124,15 +170,15 @@ export async function POST(request: NextRequest) {
         bytes: uploadResult.bytes,
         resource_type: uploadResult.resource_type,
         created_at: uploadResult.created_at,
-        
+
         // For deletion/updates
         version: uploadResult.version,
         signature: uploadResult.signature,
         etag: uploadResult.etag,
-        
+
         // Original filename
         original_filename: uploadResult.original_filename,
-        
+
         // Folder path
         folder: uploadResult.folder,
       },
@@ -140,9 +186,9 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to upload file' 
+      {
+        success: false,
+        error: error.message || 'Failed to upload file'
       },
       { status: 500 }
     );
@@ -153,6 +199,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Check if Cloudinary is configured
+    /*
     if (!process.env.CLOUDINARY_CLOUD_NAME || 
         !process.env.CLOUDINARY_API_KEY || 
         !process.env.CLOUDINARY_API_SECRET) {
@@ -164,6 +211,7 @@ export async function DELETE(request: NextRequest) {
         { status: 500 }
       );
     }
+    */
 
     // Get public_id from query parameters or request body
     const searchParams = request.nextUrl.searchParams;
@@ -177,6 +225,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete from Cloudinary
+    /*
     const deleteResult = await new Promise((resolve, reject) => {
       cloudinary.uploader.destroy(
         publicId,
@@ -186,6 +235,24 @@ export async function DELETE(request: NextRequest) {
         }
       );
     }) as any;
+    */
+
+    // LOCAL SYSTEM DELETE IMPLEMENTATION
+    const deleteResult = { result: 'ok' };
+    try {
+      // Assuming publicId is the filename we returned earlier
+      const filepath = path.join(process.cwd(), 'public', 'uploads', publicId);
+      await fs.unlink(filepath);
+    } catch (error: any) {
+      console.error('Local File Delete Error:', error);
+      // Continue even if file not found to be idempotent, or return error?
+      // Cloudinary returns 'not found' sometimes but usually 'ok'.
+      // Closely mimicking cloudinary success even if file missing might be safer for frontend logic
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+      deleteResult.result = 'not found';
+    }
 
     return NextResponse.json({
       success: true,
@@ -197,9 +264,9 @@ export async function DELETE(request: NextRequest) {
   } catch (error: any) {
     console.error('Delete error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Failed to delete file' 
+      {
+        success: false,
+        error: error.message || 'Failed to delete file'
       },
       { status: 500 }
     );

@@ -126,7 +126,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if case already exists
-    const existingCase = await Case.findOne({ caseNo: body.caseNo });
+    const existingCase = await Case.findOne({
+      caseNo: body.caseNo,
+      policeStation: body.policeStation,
+      year: body.year
+    });
     if (existingCase) {
       return NextResponse.json(
         { success: false, error: 'Case with this number already exists' },

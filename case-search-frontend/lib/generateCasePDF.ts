@@ -14,14 +14,22 @@ interface CaseData {
   priority: string;
   isPropertyProfessionalCrime: boolean;
   petition: boolean;
+  publicPetitionFile?: {
+    original_filename: string;
+    secure_url: string;
+  };
   reasonForPendency: string[];
   diary: Array<{ diaryNo: string; diaryDate: string }>;
   reports: {
     spReports: Array<{
-      rLabel: string;
-      rDate: string;
-      prLabel: string;
-      prDate: string;
+      label: string;
+      date: string;
+      file?: any;
+    }>;
+    dspReports: Array<{
+      label: string;
+      date: string;
+      file?: any;
     }>;
     supervision: string;
     fpr: string;
@@ -160,6 +168,12 @@ export const generateCasePDF = (caseData: CaseData) => {
     return false;
   };
 
+  // Force New Page helper
+  const forceNewPage = () => {
+    doc.addPage();
+    yPosition = margin;
+  };
+
   // Helper function to add text with wrapping
   const addText = (text: string, fontSize: number = 10, isBold: boolean = false, x: number = margin) => {
     doc.setFontSize(fontSize);
@@ -173,8 +187,13 @@ export const generateCasePDF = (caseData: CaseData) => {
   };
 
   // Helper function to add a section header
-  const addSectionHeader = (title: string) => {
-    checkNewPage(10);
+  const addSectionHeader = (title: string, startOnNewPage: boolean = true) => {
+    if (startOnNewPage) {
+      forceNewPage();
+    } else {
+      checkNewPage(15);
+    }
+
     yPosition += 5;
     doc.setFillColor(59, 130, 246); // Blue color
     doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 8, 'F');
@@ -195,10 +214,12 @@ export const generateCasePDF = (caseData: CaseData) => {
     doc.text(key + ':', x, yPosition);
     doc.setFont('helvetica', 'normal');
     const valueText = String(value === undefined || value === null || value === '' ? 'N/A' : value);
-    const valueLines = doc.splitTextToSize(valueText, pageWidth - x - margin - 20);
-    doc.text(valueLines, x + 35, yPosition);
+    const valueLines = doc.splitTextToSize(valueText, pageWidth - x - margin - 30);
+    doc.text(valueLines, x + 45, yPosition); // Increased gap for value
     yPosition += valueLines.length * lineHeight;
   };
+
+  // --- PDF CONTENT STARTS HERE ---
 
   // Title
   doc.setFontSize(16);
@@ -211,8 +232,8 @@ export const generateCasePDF = (caseData: CaseData) => {
   doc.text(`Case No: ${caseData.caseNo}/${caseData.year}`, pageWidth / 2, yPosition, { align: 'center' });
   yPosition += 10;
 
-  // Basic Information Section
-  addSectionHeader('Basic Information');
+  // 1. Basic Information Section (First Page)
+  addSectionHeader('Basic Information', false);
   addKeyValue('Case Number', `${caseData.caseNo}/${caseData.year}`);
   addKeyValue('Police Station', caseData.policeStation);
   addKeyValue('Crime Head', caseData.crimeHead);
@@ -232,14 +253,19 @@ export const generateCasePDF = (caseData: CaseData) => {
   addKeyValue('Property/Professional Crime', caseData.isPropertyProfessionalCrime ? 'Yes' : 'No');
   addKeyValue('Petition', caseData.petition ? 'Yes' : 'No');
 
-  // Reason for Pendency
   if (caseData.reasonForPendency && caseData.reasonForPendency.length > 0) {
-    checkNewPage();
     yPosition += 3;
-    addKeyValue('Reason for Pendency', caseData.reasonForPendency.join(', '));
+    checkNewPage();
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Reason for Pendency:', margin, yPosition);
+    yPosition += 5;
+    caseData.reasonForPendency.forEach(reason => {
+      addText(`• ${reason}`, 9, false, margin + 5);
+    });
   }
 
-  // Diary Entries
+  // 2. Diary Entries
   if (caseData.diary && caseData.diary.length > 0) {
     addSectionHeader('Diary Entries');
     caseData.diary.forEach((entry, index) => {
@@ -252,33 +278,32 @@ export const generateCasePDF = (caseData: CaseData) => {
     });
   }
 
-  // Accused Information
+  // 3. Accused Information
   if (caseData.accused && caseData.accused.length > 0) {
     addSectionHeader('Accused Information');
     caseData.accused.forEach((accused, index) => {
+      if (index > 0) {
+        checkNewPage(20);
+        yPosition += 5;
+        // Divider line between accused
+        doc.setDrawColor(200);
+        doc.line(margin, yPosition, pageWidth - margin, yPosition);
+        yPosition += 5;
+      }
+
       checkNewPage(15);
-      yPosition += 3;
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Accused ${index + 1}:`, margin + 5, yPosition);
+      doc.text(`Accused ${index + 1}: ${accused.name}`, margin + 5, yPosition);
       yPosition += 7;
+
       addKeyValue('Name', accused.name, 10);
       addKeyValue('Status', accused.status, 10);
-      if (accused.address && String(accused.address).trim() !== '') {
-        addKeyValue('Address', accused.address, 10);
-      }
-      if (accused.mobileNumber && String(accused.mobileNumber).trim() !== '') {
-        addKeyValue('Mobile Number', accused.mobileNumber, 10);
-      }
-      if (accused.aadhaarNumber && String(accused.aadhaarNumber).trim() !== '') {
-        addKeyValue('Aadhaar Number', accused.aadhaarNumber, 10);
-      }
-      if (accused.arrestedDate && String(accused.arrestedDate).trim() !== '') {
-        addKeyValue('Arrested Date', formatDate(String(accused.arrestedDate)), 10);
-      }
-      if (accused.arrestedOn && String(accused.arrestedOn).trim() !== '') {
-        addKeyValue('Arrested On', formatDate(String(accused.arrestedOn)), 10);
-      }
+      if (accused.address) addKeyValue('Address', accused.address, 10);
+      if (accused.mobileNumber) addKeyValue('Mobile Number', accused.mobileNumber, 10);
+      if (accused.aadhaarNumber) addKeyValue('Aadhaar Number', accused.aadhaarNumber, 10);
+      if (accused.arrestedDate) addKeyValue('Arrested Date', formatDate(accused.arrestedDate), 10);
+      if (accused.arrestedOn) addKeyValue('Arrested On', formatDate(accused.arrestedOn), 10);
 
       // Notice 41A
       if (accused.notice41A?.issued) {
@@ -288,15 +313,9 @@ export const generateCasePDF = (caseData: CaseData) => {
         doc.setFont('helvetica', 'bold');
         doc.text('Notice 41A:', margin + 10, yPosition);
         yPosition += 6;
-        if (accused.notice41A.notice1Date && String(accused.notice41A.notice1Date).trim() !== '') {
-          addKeyValue('Notice 1 Date', formatDate(String(accused.notice41A.notice1Date)), 15);
-        }
-        if (accused.notice41A.notice2Date && String(accused.notice41A.notice2Date).trim() !== '') {
-          addKeyValue('Notice 2 Date', formatDate(String(accused.notice41A.notice2Date)), 15);
-        }
-        if (accused.notice41A.notice3Date && String(accused.notice41A.notice3Date).trim() !== '') {
-          addKeyValue('Notice 3 Date', formatDate(String(accused.notice41A.notice3Date)), 15);
-        }
+        if (accused.notice41A.notice1Date) addKeyValue('Notice 1 Date', formatDate(accused.notice41A.notice1Date), 15);
+        if (accused.notice41A.notice2Date) addKeyValue('Notice 2 Date', formatDate(accused.notice41A.notice2Date), 15);
+        if (accused.notice41A.notice3Date) addKeyValue('Notice 3 Date', formatDate(accused.notice41A.notice3Date), 15);
       }
 
       // Warrant
@@ -307,18 +326,10 @@ export const generateCasePDF = (caseData: CaseData) => {
         doc.setFont('helvetica', 'bold');
         doc.text('Warrant:', margin + 10, yPosition);
         yPosition += 6;
-        if (accused.warrant.prayerDate && String(accused.warrant.prayerDate).trim() !== '') {
-          addKeyValue('Prayer Date', formatDate(String(accused.warrant.prayerDate)), 15);
-        }
-        if (accused.warrant.receiptDate && String(accused.warrant.receiptDate).trim() !== '') {
-          addKeyValue('Receipt Date', formatDate(String(accused.warrant.receiptDate)), 15);
-        }
-        if (accused.warrant.executionDate && String(accused.warrant.executionDate).trim() !== '') {
-          addKeyValue('Execution Date', formatDate(String(accused.warrant.executionDate)), 15);
-        }
-        if (accused.warrant.returnDate && String(accused.warrant.returnDate).trim() !== '') {
-          addKeyValue('Return Date', formatDate(String(accused.warrant.returnDate)), 15);
-        }
+        if (accused.warrant.prayerDate) addKeyValue('Prayer Date', formatDate(accused.warrant.prayerDate), 15);
+        if (accused.warrant.receiptDate) addKeyValue('Receipt Date', formatDate(accused.warrant.receiptDate), 15);
+        if (accused.warrant.executionDate) addKeyValue('Execution Date', formatDate(accused.warrant.executionDate), 15);
+        if (accused.warrant.returnDate) addKeyValue('Return Date', formatDate(accused.warrant.returnDate), 15);
       }
 
       // Proclamation
@@ -329,18 +340,10 @@ export const generateCasePDF = (caseData: CaseData) => {
         doc.setFont('helvetica', 'bold');
         doc.text('Proclamation:', margin + 10, yPosition);
         yPosition += 6;
-        if (accused.proclamation.prayerDate && String(accused.proclamation.prayerDate).trim() !== '') {
-          addKeyValue('Prayer Date', formatDate(String(accused.proclamation.prayerDate)), 15);
-        }
-        if (accused.proclamation.receiptDate && String(accused.proclamation.receiptDate).trim() !== '') {
-          addKeyValue('Receipt Date', formatDate(String(accused.proclamation.receiptDate)), 15);
-        }
-        if (accused.proclamation.executionDate && String(accused.proclamation.executionDate).trim() !== '') {
-          addKeyValue('Execution Date', formatDate(String(accused.proclamation.executionDate)), 15);
-        }
-        if (accused.proclamation.returnDate && String(accused.proclamation.returnDate).trim() !== '') {
-          addKeyValue('Return Date', formatDate(String(accused.proclamation.returnDate)), 15);
-        }
+        if (accused.proclamation.prayerDate) addKeyValue('Prayer Date', formatDate(accused.proclamation.prayerDate), 15);
+        if (accused.proclamation.receiptDate) addKeyValue('Receipt Date', formatDate(accused.proclamation.receiptDate), 15);
+        if (accused.proclamation.executionDate) addKeyValue('Execution Date', formatDate(accused.proclamation.executionDate), 15);
+        if (accused.proclamation.returnDate) addKeyValue('Return Date', formatDate(accused.proclamation.returnDate), 15);
       }
 
       // Attachment
@@ -351,73 +354,78 @@ export const generateCasePDF = (caseData: CaseData) => {
         doc.setFont('helvetica', 'bold');
         doc.text('Attachment:', margin + 10, yPosition);
         yPosition += 6;
-        if (accused.attachment.prayerDate && String(accused.attachment.prayerDate).trim() !== '') {
-          addKeyValue('Prayer Date', formatDate(String(accused.attachment.prayerDate)), 15);
-        }
-        if (accused.attachment.receiptDate && String(accused.attachment.receiptDate).trim() !== '') {
-          addKeyValue('Receipt Date', formatDate(String(accused.attachment.receiptDate)), 15);
-        }
-        if (accused.attachment.executionDate && String(accused.attachment.executionDate).trim() !== '') {
-          addKeyValue('Execution Date', formatDate(String(accused.attachment.executionDate)), 15);
-        }
-        if (accused.attachment.returnDate && String(accused.attachment.returnDate).trim() !== '') {
-          addKeyValue('Return Date', formatDate(String(accused.attachment.returnDate)), 15);
-        }
+        if (accused.attachment.prayerDate) addKeyValue('Prayer Date', formatDate(accused.attachment.prayerDate), 15);
+        if (accused.attachment.receiptDate) addKeyValue('Receipt Date', formatDate(accused.attachment.receiptDate), 15);
+        if (accused.attachment.executionDate) addKeyValue('Execution Date', formatDate(accused.attachment.executionDate), 15);
+        if (accused.attachment.returnDate) addKeyValue('Return Date', formatDate(accused.attachment.returnDate), 15);
       }
       yPosition += 3;
     });
   }
 
-  // Reports Section
+  // 4. Reports Section
   const spReports = caseData.reports.spReports || [];
-  const hasReports =
-    spReports.some(report => report.rLabel || report.rDate || report.prLabel || report.prDate) ||
-    [caseData.reports.supervision, caseData.reports.fpr, caseData.reports.finalOrder, caseData.reports.finalChargesheet]
-      .some(value => typeof value === 'string' && value.trim() !== '');
+  const dspReports = caseData.reports.dspReports || [];
+
+  const hasReports = spReports.length > 0 || dspReports.length > 0 ||
+    caseData.reports.supervision || caseData.reports.fpr ||
+    caseData.reports.finalOrder || caseData.reports.finalChargesheet;
 
   if (hasReports) {
     addSectionHeader('Reports');
+
+    // SP Reports
     if (spReports.length > 0) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SP Reports:', margin + 2, yPosition);
+      yPosition += 6;
+
       spReports.forEach((report, index) => {
         checkNewPage();
-        yPosition += 3;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Report ${index + 1}:`, margin + 5, yPosition);
-        yPosition += 7;
-        if (report.rLabel && String(report.rLabel).trim() !== '') {
-          addKeyValue('R Label', report.rLabel, 10);
-        }
-        if (report.rDate && String(report.rDate).trim() !== '') {
-          addKeyValue('R Date', formatDate(String(report.rDate)), 10);
-        }
-        if (report.prLabel && String(report.prLabel).trim() !== '') {
-          addKeyValue('PR Label', report.prLabel, 10);
-        }
-        if (report.prDate && String(report.prDate).trim() !== '') {
-          addKeyValue('PR Date', formatDate(String(report.prDate)), 10);
-        }
-        yPosition += 2;
+        addKeyValue(`SP Report ${index + 1}`, `${report.label || 'N/A'} - ${report.date ? formatDate(report.date) : 'No Date'}`, 5);
       });
+      yPosition += 5;
     }
-    if (caseData.reports.supervision && caseData.reports.supervision.trim() !== '') addKeyValue('Supervision Date', formatDate(caseData.reports.supervision));
-    if (caseData.reports.fpr && caseData.reports.fpr.trim() !== '') addKeyValue('FPR Date', formatDate(caseData.reports.fpr));
-    if (caseData.reports.finalOrder && caseData.reports.finalOrder.trim() !== '') addKeyValue('Final Order Date', formatDate(caseData.reports.finalOrder));
-    if (caseData.reports.finalChargesheet && caseData.reports.finalChargesheet.trim() !== '') addKeyValue('Final Chargesheet Date', formatDate(caseData.reports.finalChargesheet));
+
+    // Supervision
+    if (caseData.reports.supervision) {
+      addKeyValue('Supervision Date', formatDate(caseData.reports.supervision));
+      yPosition += 2;
+    }
+
+    // DSP Reports
+    if (dspReports.length > 0) {
+      checkNewPage();
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DSP Reports:', margin + 2, yPosition);
+      yPosition += 6;
+
+      dspReports.forEach((report, index) => {
+        checkNewPage();
+        addKeyValue(`DSP Report ${index + 1}`, `${report.label || 'N/A'} - ${report.date ? formatDate(report.date) : 'No Date'}`, 5);
+      });
+      yPosition += 5;
+    }
+
+    if (caseData.reports.fpr) addKeyValue('FPR Date', formatDate(caseData.reports.fpr));
+    if (caseData.reports.finalOrder) addKeyValue('Final Order Date', formatDate(caseData.reports.finalOrder));
+    if (caseData.reports.finalChargesheet) addKeyValue('Final Chargesheet Date', formatDate(caseData.reports.finalChargesheet));
   }
 
-  // Chargesheet submitted in VO Section
-  addSectionHeader('Chargesheet submitted in VO');
+  // 5. Chargesheet submitted in VO Section
+  addSectionHeader('Chargesheet Information');
   addKeyValue('Chargesheet submitted in VO', caseData.chargeSheet.submitted ? 'Yes' : 'No');
-  if (caseData.chargeSheet.submissionDate && caseData.chargeSheet.submissionDate.trim() !== '') {
+  if (caseData.chargeSheet.submissionDate) {
     addKeyValue('Submission Date (VO)', formatDate(caseData.chargeSheet.submissionDate));
   }
   addKeyValue('Chargesheet submitted in Court', caseData.finalChargesheetSubmitted ? 'Yes' : 'No');
-  if (caseData.finalChargesheetSubmissionDate && caseData.finalChargesheetSubmissionDate.trim() !== '') {
+  if (caseData.finalChargesheetSubmissionDate) {
     addKeyValue('Submission Date (Court)', formatDate(caseData.finalChargesheetSubmissionDate));
   }
 
-  // Prosecution Sanction
+  // 6. Prosecution Sanction
   if (caseData.prosecutionSanction && caseData.prosecutionSanction.length > 0) {
     addSectionHeader('Prosecution Sanction');
     caseData.prosecutionSanction.forEach((sanction, index) => {
@@ -428,17 +436,13 @@ export const generateCasePDF = (caseData: CaseData) => {
       doc.text(`Sanction ${index + 1}:`, margin + 5, yPosition);
       yPosition += 7;
       addKeyValue('Type', sanction.type, 10);
-      if (sanction.submissionDate && String(sanction.submissionDate).trim() !== '') {
-        addKeyValue('Submission Date', formatDate(String(sanction.submissionDate)), 10);
-      }
-      if (sanction.receiptDate && String(sanction.receiptDate).trim() !== '') {
-        addKeyValue('Receipt Date', formatDate(String(sanction.receiptDate)), 10);
-      }
+      if (sanction.submissionDate) addKeyValue('Submission Date', formatDate(sanction.submissionDate), 10);
+      if (sanction.receiptDate) addKeyValue('Receipt Date', formatDate(sanction.receiptDate), 10);
       yPosition += 2;
     });
   }
 
-  // FSL/Forensic Section
+  // 7. FSL/Forensic Section
   if (caseData.fsl && caseData.fsl.length > 0) {
     addSectionHeader('FSL/Forensic Reports');
     caseData.fsl.forEach((fsl, index) => {
@@ -449,61 +453,50 @@ export const generateCasePDF = (caseData: CaseData) => {
       doc.text(`FSL Report ${index + 1}:`, margin + 5, yPosition);
       yPosition += 7;
       addKeyValue('Report Required', fsl.reportRequired ? 'Yes' : 'No', 10);
-      if (fsl.sampleToBeCollected) {
-        addKeyValue('Sample To Be Collected', fsl.sampleToBeCollected, 10);
-      }
+      if (fsl.sampleToBeCollected) addKeyValue('Sample To Be Collected', fsl.sampleToBeCollected, 10);
       addKeyValue('Sample Collected', fsl.sampleCollected ? 'Yes' : 'No', 10);
-      if (fsl.sampleCollectionDate && String(fsl.sampleCollectionDate).trim() !== '') {
-        addKeyValue('Sample Collection Date', formatDate(String(fsl.sampleCollectionDate)), 10);
-      }
-      if (fsl.sampleSendingDate && String(fsl.sampleSendingDate).trim() !== '') {
-        addKeyValue('Sample Sending Date', formatDate(String(fsl.sampleSendingDate)), 10);
-      }
+      if (fsl.sampleCollectionDate) addKeyValue('Sample Collection Date', formatDate(fsl.sampleCollectionDate), 10);
+      if (fsl.sampleSendingDate) addKeyValue('Sample Sending Date', formatDate(fsl.sampleSendingDate), 10);
       addKeyValue('Report Received', fsl.reportReceived ? 'Yes' : 'No', 10);
-      if (fsl.reportReceivedDate && String(fsl.reportReceivedDate).trim() !== '') {
-        addKeyValue('Report Received Date', formatDate(String(fsl.reportReceivedDate)), 10);
-      }
-      if (fsl.reportDate && String(fsl.reportDate).trim() !== '') {
-        addKeyValue('Report Date', formatDate(String(fsl.reportDate)), 10);
-      }
+      if (fsl.reportReceivedDate) addKeyValue('Report Received Date', formatDate(fsl.reportReceivedDate), 10);
+      if (fsl.reportDate) addKeyValue('Report Date', formatDate(fsl.reportDate), 10);
       yPosition += 2;
     });
   }
 
-  // Injury Report Section
+  // 8. Injury Report Section
   addSectionHeader('Injury Report');
   addKeyValue('Report Required', caseData.injuryReport.report ? 'Yes' : 'No');
-  if (caseData.injuryReport.injuryType && caseData.injuryReport.injuryType.trim() !== '') {
-    addKeyValue('Injury Type', caseData.injuryReport.injuryType, 0);
-  }
-  if (caseData.injuryReport.injuryDate && caseData.injuryReport.injuryDate.trim() !== '') {
-    addKeyValue('Injury Date', formatDate(caseData.injuryReport.injuryDate));
-  }
+  if (caseData.injuryReport.injuryType) addKeyValue('Injury Type', caseData.injuryReport.injuryType, 0);
+  if (caseData.injuryReport.injuryDate) addKeyValue('Injury Date', formatDate(caseData.injuryReport.injuryDate));
   addKeyValue('Report Received', caseData.injuryReport.reportReceived ? 'Yes' : 'No');
-  if (caseData.injuryReport.reportDate && caseData.injuryReport.reportDate.trim() !== '') {
-    addKeyValue('Report Date', formatDate(caseData.injuryReport.reportDate));
-  }
+  if (caseData.injuryReport.reportDate) addKeyValue('Report Date', formatDate(caseData.injuryReport.reportDate));
 
-  // PM Report Section
+  // 9. PM Report Section
   addSectionHeader('PM Report');
   addKeyValue('Report', caseData.pmReport.report || 'N/A');
-  if (caseData.pmReport.pmDate && caseData.pmReport.pmDate.trim() !== '') {
-    addKeyValue('PM Date', formatDate(caseData.pmReport.pmDate));
-  }
+  if (caseData.pmReport.pmDate) addKeyValue('PM Date', formatDate(caseData.pmReport.pmDate));
   addKeyValue('Report Received', caseData.pmReport.reportReceived ? 'Yes' : 'No');
-  if (caseData.pmReport.reportDate && caseData.pmReport.reportDate.trim() !== '') {
-    addKeyValue('Report Date', formatDate(caseData.pmReport.reportDate));
-  }
+  if (caseData.pmReport.reportDate) addKeyValue('Report Date', formatDate(caseData.pmReport.reportDate));
 
-  // Compensation Proposal Section
+  // 10. Compensation Proposal Section
   addSectionHeader('Compensation Proposal');
   addKeyValue('Compensation Proposal Required', caseData.compensationProposal.required ? 'Yes' : 'No');
   addKeyValue('Compensation Proposal Submitted', caseData.compensationProposal.submitted ? 'Yes' : 'No');
-  if (caseData.compensationProposal.submissionDate && caseData.compensationProposal.submissionDate.trim() !== '') {
+  if (caseData.compensationProposal.submissionDate) {
     addKeyValue('Submission Date', formatDate(caseData.compensationProposal.submissionDate));
   }
 
-  // Notes Section
+  // 11. Petition Section
+  if (caseData.petition || caseData.publicPetitionFile) {
+    addSectionHeader('Petition');
+    addKeyValue('Petition Filed', caseData.petition ? 'Yes' : 'No');
+    if (caseData.publicPetitionFile) {
+      addKeyValue('Petition File', caseData.publicPetitionFile.original_filename || 'File Available');
+    }
+  }
+
+  // 12. Notes Section
   if (caseData.notes && caseData.notes.length > 0) {
     addSectionHeader('Notes');
     caseData.notes.forEach((note, index) => {
@@ -525,23 +518,20 @@ export const generateCasePDF = (caseData: CaseData) => {
   }
 
   // Footer with generation date
-  // Get total pages - jsPDF 3.x uses internal.pages array
-  // Type assertion needed due to outdated type definitions
   const internal = doc.internal as any;
   const totalPages = internal.pages?.length || 1;
-  
-  // Add footer to each page
+
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(128, 128, 128);
-    const generatedDate = new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    const generatedDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
     doc.text(
       `Generated on ${generatedDate} - Page ${i} of ${totalPages}`,
@@ -556,4 +546,3 @@ export const generateCasePDF = (caseData: CaseData) => {
   const fileName = `Case_${caseData.caseNo}_${caseData.year}_Report.pdf`;
   doc.save(fileName);
 };
-

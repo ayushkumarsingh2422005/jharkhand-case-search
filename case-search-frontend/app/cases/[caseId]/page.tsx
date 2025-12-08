@@ -242,6 +242,10 @@ export default function CaseDetail() {
         priority: caseData.priority || "Normal",
         isPropertyProfessionalCrime: caseData.isPropertyProfessionalCrime || false,
         petition: caseData.petition || false,
+        publicPetitionFile: caseData.publicPetitionFile ? {
+          original_filename: caseData.publicPetitionFile.original_filename || "",
+          secure_url: caseData.publicPetitionFile.secure_url || "",
+        } : undefined,
         reasonForPendency: caseData.reasonForPendency || [],
         diary: (caseData.diary || []).map((entry: any) => ({
           diaryNo: entry.diaryNo || "",

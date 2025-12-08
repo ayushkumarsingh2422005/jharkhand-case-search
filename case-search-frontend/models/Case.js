@@ -329,7 +329,6 @@ const CaseSchema = new mongoose.Schema({
   caseNo: {
     type: String,
     required: true,
-    unique: true,
     index: true,
   },
   year: {
@@ -453,7 +452,7 @@ const CaseSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-CaseSchema.index({ caseNo: 1, year: 1 });
+CaseSchema.index({ caseNo: 1, policeStation: 1, year: 1 }, { unique: true });
 CaseSchema.index({ policeStation: 1, year: 1 });
 CaseSchema.index({ caseStatus: 1, investigationStatus: 1 });
 CaseSchema.index({ 'accused.name': 1 });
