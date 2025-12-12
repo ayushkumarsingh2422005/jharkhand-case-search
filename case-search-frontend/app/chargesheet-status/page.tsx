@@ -277,9 +277,12 @@ export default function ChargesheetStatusPage() {
                                                     <span className="text-sm font-medium text-slate-900">{item.accused.name}</span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium text-slate-900">Case {item.caseRow.caseNo}</span>
-                                                        <span className="text-xs text-slate-500">{item.caseRow.policeStation}</span>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-sm font-medium text-slate-900">Case No: {item.caseRow.caseNo}</span>
+                                                        <span>
+                                                            <span className="text-xs text-slate-600">Year: {item.caseRow.year}</span> |
+                                                            <span className="text-xs text-slate-600 font-medium"> PS: {item.caseRow.policeStation}</span>
+                                                        </span>
                                                         <span className="text-xs text-slate-500">{item.caseRow.crimeSection}</span>
                                                     </div>
                                                 </td>
