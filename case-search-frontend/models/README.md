@@ -4,7 +4,7 @@ This directory contains Mongoose models for the Case Search application.
 
 ## Models
 
-### 1. Case Model (`Case.js`)
+### 1. Case Model (`Case.js`) 
 The main model for storing case information.
 
 **Key Fields:**
