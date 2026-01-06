@@ -307,6 +307,7 @@ export default function EditCase() {
     priority: "Normal" as Priority,
     caseDecisionStatus: "" as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency",
     isPropertyProfessionalCrime: false,
+    isPendingForCharge: false,
     petition: false,
     publicPetitionFile: null as { public_id: string; secure_url: string; url: string; original_filename: string; format: string; bytes: number } | null,
     reasonForPendency: [] as string[],
@@ -544,6 +545,7 @@ export default function EditCase() {
           priority: fetchedCaseData.priority || "Normal",
           caseDecisionStatus: fetchedCaseData.caseDecisionStatus || "",
           isPropertyProfessionalCrime: fetchedCaseData.isPropertyProfessionalCrime || false,
+          isPendingForCharge: fetchedCaseData.isPendingForCharge || false,
           petition: fetchedCaseData.petition || false,
           reasonForPendency: fetchedCaseData.reasonForPendency || [],
           diary: fetchedCaseData.diary && Array.isArray(fetchedCaseData.diary)
@@ -1602,6 +1604,19 @@ export default function EditCase() {
                       )}
                     </div>
                   )}
+                </div>
+                <div className="sm:col-span-2 lg:col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Additional Status</label>
+                  <label className="inline-flex items-center gap-2 text-sm pt-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="isPendingForCharge"
+                      checked={formData.isPendingForCharge}
+                      onChange={handleInputChange}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Case Pending for Charge
+                  </label>
                 </div>
                 {/* Diary Entries */}
                 <div className="col-span-full">

@@ -100,6 +100,7 @@ type CaseRow = {
   investigationStatus?: InvestigationStatus;
   priority?: Priority;
   isPropertyProfessionalCrime?: boolean;
+  isPendingForCharge?: boolean;
   reasonForPendency?: string[];
   reports?: ReportInfo;
   finalChargesheetSubmitted?: boolean;
@@ -404,6 +405,7 @@ export default function Home() {
     investigationStatus: [] as Array<InvestigationStatus>,
     priority: [] as Array<Priority>,
     isPropertyProfessionalCrime: false,
+    isPendingForCharge: false,
     reasonForPendency: [] as string[],
     // Accused filters
     accusedName: "",
@@ -577,6 +579,7 @@ export default function Home() {
             investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
             priority: item.priority as Priority | undefined,
             isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
+            isPendingForCharge: item.isPendingForCharge || false,
             reasonForPendency: item.reasonForPendency || [],
             reports: item.reports,
             finalChargesheetSubmitted: item.finalChargesheetSubmitted || false,
@@ -891,6 +894,9 @@ export default function Home() {
         // Property/Professional crime filter
         if (filters.isPropertyProfessionalCrime && !row.isPropertyProfessionalCrime) return null;
 
+        // Case Pending for Charge filter
+        if (filters.isPendingForCharge && !row.isPendingForCharge) return null;
+
         // Reason for Pendency filter
         if (filters.reasonForPendency.length > 0) {
           const caseReasons = row.reasonForPendency || [];
@@ -1164,6 +1170,7 @@ export default function Home() {
       investigationStatus: [],
       priority: [],
       isPropertyProfessionalCrime: false,
+      isPendingForCharge: false,
       reasonForPendency: [],
       accusedName: "",
       accusedStatus: "",
@@ -1717,6 +1724,18 @@ export default function Home() {
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
                       Identify property/professional crimes
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Additional Status</label>
+                    <label className="inline-flex items-center gap-2 text-sm pt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.isPendingForCharge}
+                        onChange={(e) => setFilters({ ...filters, isPendingForCharge: e.target.checked })}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      Case Pending for Charge
                     </label>
                   </div>
                   <div className="sm:col-span-2 lg:col-span-1">

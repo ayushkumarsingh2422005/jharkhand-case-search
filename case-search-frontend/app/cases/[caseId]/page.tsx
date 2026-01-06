@@ -127,6 +127,7 @@ export default function CaseDetail() {
         srNsr: undefined as SrNsr | undefined,
         priority: "Normal" as Priority,
         isPropertyProfessionalCrime: false,
+        isPendingForCharge: false,
         petition: false,
         finalChargesheetSubmitted: false,
         finalChargesheetSubmissionDate: undefined as string | undefined,
@@ -149,6 +150,7 @@ export default function CaseDetail() {
       srNsr: (caseData.srNsr as SrNsr | undefined),
       priority: (caseData.priority || "Normal") as Priority,
       isPropertyProfessionalCrime: caseData.isPropertyProfessionalCrime || false,
+      isPendingForCharge: caseData.isPendingForCharge || false,
       petition: caseData.petition || false,
       finalChargesheetSubmitted: caseData.finalChargesheetSubmitted || false,
       finalChargesheetSubmissionDate: caseData.finalChargesheetSubmissionDate,
@@ -736,6 +738,11 @@ export default function CaseDetail() {
               <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-purple-50 text-purple-700 ring-purple-600/20">
                 {summary.punishmentCategory}
               </span>
+              {summary.isPendingForCharge && (
+                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset bg-rose-50 text-rose-700 ring-rose-600/20">
+                  Pending for Charge
+                </span>
+              )}
             </div>
           </div>
 
@@ -787,6 +794,7 @@ export default function CaseDetail() {
                     {summary.srNsr && <li><strong className="font-medium">SR/NSR:</strong> {summary.srNsr}</li>}
                     <li><strong className="font-medium">Priority:</strong> {summary.priority}</li>
                     <li><strong className="font-medium">Property/Professional Crime:</strong> {summary.isPropertyProfessionalCrime ? "Yes" : "No"}</li>
+                    <li><strong className="font-medium">Case Pending for Charge:</strong> {summary.isPendingForCharge ? "Yes" : "No"}</li>
                   </ul>
                 </Card>
                 <Card title="Progress">

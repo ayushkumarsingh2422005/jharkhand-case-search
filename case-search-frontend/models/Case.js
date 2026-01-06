@@ -383,6 +383,10 @@ const CaseSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  isPendingForCharge: {
+    type: Boolean,
+    default: false,
+  },
   petition: {
     type: Boolean,
     default: false,
