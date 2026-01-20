@@ -71,7 +71,6 @@ export default function CaseDetail() {
   const { user } = useAuth();
   // Handle caseId which could be string, array, or undefined
   const caseId = Array.isArray(params?.caseId) ? params.caseId[0] : params?.caseId;
-  const caseNo = caseId && typeof caseId === 'string' ? caseId.replaceAll("-", "/") : "";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [caseData, setCaseData] = useState<any>(null);
@@ -111,10 +110,9 @@ export default function CaseDetail() {
 
   const summary = useMemo(() => {
     if (!caseData) {
-      const yearFromCaseNo = caseNo ? Number(caseNo.split("/")[1] || new Date().getFullYear()) : new Date().getFullYear();
       return {
-        caseNo: caseNo || "",
-        year: yearFromCaseNo,
+        caseNo: "",
+        year: new Date().getFullYear(),
         policeStation: "",
         crimeHead: "",
         section: "",
@@ -134,10 +132,9 @@ export default function CaseDetail() {
       };
     }
 
-    const yearFromCaseNo = caseNo ? Number(caseNo.split("/")[1] || new Date().getFullYear()) : new Date().getFullYear();
     return {
-      caseNo: caseData.caseNo || caseNo || "",
-      year: caseData.year || yearFromCaseNo,
+      caseNo: caseData.caseNo || "",
+      year: caseData.year || new Date().getFullYear(),
       policeStation: caseData.policeStation || "",
       crimeHead: caseData.crimeHead || "",
       section: caseData.crimeSection || caseData.section || "",
@@ -155,7 +152,7 @@ export default function CaseDetail() {
       finalChargesheetSubmitted: caseData.finalChargesheetSubmitted || false,
       finalChargesheetSubmissionDate: caseData.finalChargesheetSubmissionDate,
     };
-  }, [caseData, caseNo]);
+  }, [caseData]);
 
   const [activeTab, setActiveTab] = useState<
     "overview" | "accused" | "notices" | "prosecution" | "victim" | "reports" | "petition" | "notes"
@@ -231,7 +228,7 @@ export default function CaseDetail() {
     try {
       // Prepare case data for PDF generation - transform caseData to match PDF interface
       const pdfData = {
-        caseNo: caseData.caseNo || caseNo || "",
+        caseNo: caseData.caseNo || "",
         year: caseData.year || new Date().getFullYear(),
         policeStation: caseData.policeStation || "",
         crimeHead: caseData.crimeHead || "",

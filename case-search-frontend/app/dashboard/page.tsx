@@ -305,7 +305,7 @@ export default function Dashboard() {
                       <tr key={caseItem._id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <Link
-                            href={`/cases/${caseItem.caseNo.replace(/\//g, "-")}`}
+                            href={`/cases/${caseItem._id}`}
                             className="text-blue-700 hover:text-blue-800 font-medium"
                           >
                             {caseItem.caseNo}
@@ -327,7 +327,7 @@ export default function Dashboard() {
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              href={`/cases/${caseItem.caseNo.replace(/\//g, "-")}`}
+                              href={`/cases/${caseItem._id}`}
                               className="text-blue-700 hover:text-blue-800"
                               title="View"
                             >

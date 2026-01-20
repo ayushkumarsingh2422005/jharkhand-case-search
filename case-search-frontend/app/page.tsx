@@ -86,6 +86,7 @@ type ReportInfo = {
 };
 
 type CaseRow = {
+  _id: string;
   caseNo: string;
   year: number;
   caseDate?: string;
@@ -565,6 +566,7 @@ export default function Home() {
 
 
           return {
+            _id: item._id,
             caseNo: item.caseNo,
             year: item.year,
             caseDate: item.caseDate,
@@ -2669,7 +2671,7 @@ export default function Home() {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <Link
-                                  href={`/cases/${row.caseNo.replaceAll("/", "-")}`}
+                                  href={`/cases/${row._id}`}
                                   title="Open detailed case timeline"
                                   className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
                                 >
