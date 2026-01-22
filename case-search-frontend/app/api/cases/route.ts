@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit),
+        pages: limit === 0 ? 1 : Math.ceil(total / limit),
       },
     });
   } catch (error: any) {

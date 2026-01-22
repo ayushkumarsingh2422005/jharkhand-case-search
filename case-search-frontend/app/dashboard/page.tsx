@@ -68,7 +68,7 @@ export default function Dashboard() {
       setLoading(true);
       const params = new URLSearchParams();
       params.append('page', page.toString());
-      params.append('limit', '25');
+      params.append('limit', '0');
 
       if (searchFilters.caseNo) params.append('caseNo', searchFilters.caseNo);
       if (searchFilters.year) params.append('year', searchFilters.year);

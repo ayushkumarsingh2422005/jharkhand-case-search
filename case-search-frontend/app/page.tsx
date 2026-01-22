@@ -555,7 +555,7 @@ export default function Home() {
   const fetchCases = async () => {
     try {
       setDataLoading(true);
-      const response = await fetch("/api/cases?limit=1000");
+      const response = await fetch("/api/cases?limit=0");
       const result = await response.json();
 
       if (result.success) {
