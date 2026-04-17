@@ -812,6 +812,27 @@ export default function CaseDetail() {
                     value={summary.finalChargesheetSubmitted ? "Submitted" : "Pending"}
                   />
                 </Card>
+                <div className="md:col-span-2">
+                  <Card title="Case diary">
+                    {caseData?.diary && Array.isArray(caseData.diary) && caseData.diary.length > 0 ? (
+                      <ul className="text-sm space-y-2">
+                        {caseData.diary.map((diaryEntry: any, idx: number) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="mt-1.5 w-2 h-2 shrink-0 bg-blue-600 rounded-full" />
+                            <span>
+                              <span className="font-medium text-slate-900">{diaryEntry.diaryNo || "—"}</span>
+                              {diaryEntry.diaryDate ? (
+                                <span className="text-slate-600"> — {new Date(diaryEntry.diaryDate).toLocaleDateString()}</span>
+                              ) : null}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-500">No diary entries recorded.</p>
+                    )}
+                  </Card>
+                </div>
               </div>
             )}
 
@@ -1267,24 +1288,6 @@ export default function CaseDetail() {
                 </Card>
                 <Card title="Reasons for Pendency">
                   <div className="space-y-4">
-                    <div className="text-sm">
-                      <span className="text-slate-600 font-medium">Diary Entries:</span>
-                      {caseData?.diary && Array.isArray(caseData.diary) && caseData.diary.length > 0 ? (
-                        <ul className="mt-2 space-y-2">
-                          {caseData.diary.map((diaryEntry: any, idx: number) => (
-                            <li key={idx} className="flex items-center gap-2">
-                              <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                              <span className="font-medium text-slate-900">
-                                {diaryEntry.diaryNo || "—"}
-                                {diaryEntry.diaryDate ? ` • ${new Date(diaryEntry.diaryDate).toLocaleDateString()}` : ""}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-2 text-slate-500">No diary entries recorded</p>
-                      )}
-                    </div>
                     <div className="text-sm">
                       <span className="text-slate-600 font-medium">Reason:</span>
                       {reasonForPendency.length === 0 ? (

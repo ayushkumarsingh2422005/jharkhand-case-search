@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB, Case } from '../../../../models';
-import mongoose from 'mongoose';
+
+/** Only treat as ObjectId when it is a 24-char hex string (avoids findById on ambiguous slugs). */
+function isMongoObjectId(id: string): boolean {
+  return /^[a-fA-F0-9]{24}$/.test(id);
+}
 
 // GET - Fetch a single case by ID (Authenticated users only)
 export async function GET(
@@ -34,9 +38,9 @@ export async function GET(
 
     const { caseId } = await params;
 
-    // Check if it's a valid ObjectId or case number
+    // Resolve by MongoDB id, else by case number (slash encoded as hyphen in URLs)
     let caseData;
-    if (mongoose.Types.ObjectId.isValid(caseId)) {
+    if (isMongoObjectId(caseId)) {
       caseData = await Case.findById(caseId).lean({ virtuals: true });
     } else {
       // Try to find by case number (replace - with /)
@@ -106,7 +110,7 @@ export async function PUT(
     }
 
     let caseData;
-    if (mongoose.Types.ObjectId.isValid(caseId)) {
+    if (isMongoObjectId(caseId)) {
       caseData = await Case.findByIdAndUpdate(caseId, body, {
         new: true,
         runValidators: true,
@@ -169,7 +173,7 @@ export async function DELETE(
     const { caseId } = await params;
 
     let caseData;
-    if (mongoose.Types.ObjectId.isValid(caseId)) {
+    if (isMongoObjectId(caseId)) {
       caseData = await Case.findByIdAndDelete(caseId);
     } else {
       const caseNo = caseId.replace(/-/g, '/');

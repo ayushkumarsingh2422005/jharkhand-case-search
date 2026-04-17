@@ -9,6 +9,7 @@ import Image from "next/image";
 type CaseStatus = "Disposed" | "Under investigation";
 type InvestigationStatus = "Detected" | "Undetected";
 type Priority = "Under monitoring" | "Normal";
+type SrNsr = "SR" | "NSR";
 
 type AccusedStatus = "Arrested" | "Not arrested" | "Decision pending" | "Pending Verification";
 
@@ -99,6 +100,7 @@ type CaseRow = {
 
   caseDecisionStatus?: string;
   investigationStatus?: InvestigationStatus;
+  srNsr?: SrNsr;
   priority?: Priority;
   isPropertyProfessionalCrime?: boolean;
   isPendingForCharge?: boolean;
@@ -404,6 +406,7 @@ export default function Home() {
 
     caseDecisionStatus: "" as "" | "True" | "False" | "Partial Pendency" | "Complete Pendency",
     investigationStatus: [] as Array<InvestigationStatus>,
+    srNsr: [] as Array<SrNsr>,
     priority: [] as Array<Priority>,
     isPropertyProfessionalCrime: false,
     isPendingForCharge: false,
@@ -579,6 +582,7 @@ export default function Home() {
 
             caseDecisionStatus: item.caseDecisionStatus as string | undefined,
             investigationStatus: item.investigationStatus as InvestigationStatus | undefined,
+            srNsr: item.srNsr as SrNsr | undefined,
             priority: item.priority as Priority | undefined,
             isPropertyProfessionalCrime: item.isPropertyProfessionalCrime || false,
             isPendingForCharge: item.isPendingForCharge || false,
@@ -888,6 +892,10 @@ export default function Home() {
           if (row.investigationStatus && !filters.investigationStatus.includes(row.investigationStatus)) return null;
         }
 
+        if (filters.srNsr.length > 0) {
+          if (!row.srNsr || !filters.srNsr.includes(row.srNsr)) return null;
+        }
+
         // Priority filter
         if (filters.priority.length > 0) {
           if (!row.priority || !filters.priority.includes(row.priority)) return null;
@@ -1170,6 +1178,7 @@ export default function Home() {
       caseStatus: [],
       caseDecisionStatus: "",
       investigationStatus: [],
+      srNsr: [],
       priority: [],
       isPropertyProfessionalCrime: false,
       isPendingForCharge: false,
@@ -1487,6 +1496,28 @@ export default function Home() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">Case Date To</label>
                     <input type="date" value={filters.caseDateTo} onChange={(e) => setFilters({ ...filters, caseDateTo: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                  </div>
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">SR / NSR</label>
+                    <div className="flex flex-wrap gap-4 pt-0.5">
+                      {(["SR", "NSR"] as SrNsr[]).map((value) => (
+                        <label key={value} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.srNsr.includes(value)}
+                            onChange={(e) => {
+                              const set = new Set(filters.srNsr);
+                              if (e.target.checked) set.add(value);
+                              else set.delete(value);
+                              setFilters({ ...filters, srNsr: Array.from(set) });
+                            }}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          {value}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Leave unchecked to include all cases. Select one or both to narrow results.</p>
                   </div>
                 </div>
               </div>
